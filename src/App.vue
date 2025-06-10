@@ -11,5 +11,7 @@ import Layout from './layout/index.vue'
 </script>
 
 <template>
-<Layout/>
+    <keep-alive>
+        <Layout />
+    </keep-alive>
 </template>

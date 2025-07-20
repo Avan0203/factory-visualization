@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-06-08 16:33:20
+ * @LastEditTime: 2025-07-21 01:43:40
  * @FilePath: /factory-visualization/src/layout/monitor/index.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -34,7 +34,11 @@ import {
     Vector2,
     InstancedMesh,
     Object3D,
-    BoxGeometry
+    BoxGeometry,
+    LineSegments,
+    LineBasicMaterial,
+    Line,
+    AxesHelper
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -49,7 +53,9 @@ class Monitor {
         this.camera = new PerspectiveCamera(75, domElement.clientWidth / domElement.clientHeight, 0.1, 1000);
         this.camera.up.set(0, 0, 1);
         this.camera.updateProjectionMatrix();
-        this.camera.position.set(10, 10, 5);
+        this.camera.position.set(0, -1000, 500);
+
+
 
         this.renderer = new WebGLRenderer();
         this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
@@ -79,13 +85,13 @@ class Monitor {
     }
 
     setup() {
-        this.#setupSkybox();
+        this.#setupSkyBox();
         this.#setupLights();
         this.#setupGround();
         this.#setupRoad();
         this.#setupBuildings();
-        this.#setupTrees();
-        this.#setupGrills();
+        // this.#setupTrees();
+        // this.#setupGrills();
     }
 
     #setupLights() {
@@ -106,7 +112,7 @@ class Monitor {
         this.scene.add(directionalLight);
     }
 
-    #setupSkybox() {
+    #setupSkyBox() {
         const loader = new RGBELoader();
         loader.load(`${publicPath}/sky.hdr`, (texture) => {
             console.log('texture: ', texture);
@@ -114,7 +120,7 @@ class Monitor {
 
             const hdrScene = new Scene();
             const mesh = new Mesh(new SphereGeometry(10, 32, 32), new MeshBasicMaterial({ map: texture, side: 1 }));
-            mesh.applyMatrix4(rotateMatrix);
+            // mesh.applyMatrix4(rotateMatrix);
             hdrScene.add(mesh);
 
             const pmremGenerator = new PMREMGenerator(this.renderer);
@@ -157,25 +163,37 @@ class Monitor {
             material.needsUpdate = true;
         });
 
+        this.scene.add(new AxesHelper(100))
 
         const path = new Path();
         path.moveTo(-70, -80);
         path.lineTo(-60, 80);
-        path.lineTo(40, 80);
-        path.lineTo(40, -80);
+        path.absarc(-40, 80, 20, Math.PI / 2, 0);
+        // path.lineTo(40, 80);
+        // path.lineTo(40, -80);
 
-        const curve = new CatmullRomCurve3(path.getPoints().map(({ x, y }) => new Vector3(x, y, 0)), true);
-        const pathPoints = curve.getPoints(100);
 
-        const geometry = createRoadGeometry(pathPoints, 10);
 
-        const road = new Mesh(geometry, material);
-        road.userData.curve = curve;
-        this.road = road;
-        road.position.z = 0.01;
-        road.receiveShadow = true;
-        road.castShadow = true;
-        this.scene.add(road);
+        // const curve = new CatmullRomCurve3(path.getPoints().map(({ x, y }) => new Vector3(x, y, 0)), true);
+        const pathPoints = path.getPoints().map(({ x, y }) => new Vector3(x, y, 1));
+        console.log('pathPoints: ', pathPoints);
+
+        const geometry = new BufferGeometry().setFromPoints(pathPoints);
+        const line = new Line(geometry, new LineBasicMaterial({ color: 0xffffff }))
+
+        this.scene.add(line);
+
+
+
+        // const geometry = createRoadGeometry(pathPoints, 10);
+
+        // const road = new Mesh(geometry, material);
+        // road.userData.curve = curve;
+        // this.road = road;
+        // road.position.z = 0.01;
+        // road.receiveShadow = true;
+        // road.castShadow = true;
+        // this.scene.add(road);
     }
 
     #setupBuildings() {

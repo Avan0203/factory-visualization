@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "build:prod": "NODE_ENV=production vite build",
     "deploy": "./deploy.sh",
-    "serve": "vite preview --port 4173 --host"
+    "serve": "vite preview --port 4173 --host",
+    "npm:build": "NODE_ENV=production vite build",
+    "npm:preview": "vite preview"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

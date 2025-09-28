@@ -10,13 +10,17 @@
     <div ref="chartRef" style="width: 100%;height: 100%;"></div>
 </template>
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick } from 'vue';
 import * as echarts from 'echarts';
-const chartRef = ref(null);
-onMounted(() => {
-    if (chartRef.value) {
-        const myChart = echarts.init(chartRef.value);
 
+const chartRef = ref(null);
+let myChart = null;
+
+// 初始化图表
+const initChart = () => {
+    if (chartRef.value && !myChart) {
+        myChart = echarts.init(chartRef.value);
+        
         const option = {
             title: {
                 text: '环境温度',
@@ -157,12 +161,38 @@ onMounted(() => {
                     data: [21.9, 22.1, 22.4, 22.7, 23.0, 24.0, 25.2, 26.3, 27.6, 28.0, 27.4, 25.9, 23.4, 20.9, 19.7, 18.4, 18.0, 20.1, 23.4, 25.4, 27.9, 30.9, 29.1, 27.3, 25.8, 24.3]
                 }
             ]
-        }
+        };
+        
         myChart.setOption(option);
-        window.addEventListener('resize', () => {
-            myChart.resize();
-        })
-
+        
+        // 添加窗口大小变化监听
+        window.addEventListener('resize', handleResize);
     }
-})
+};
+
+// 处理窗口大小变化
+const handleResize = () => {
+    if (myChart) {
+        myChart.resize();
+    }
+};
+
+// 组件挂载时初始化图表
+onMounted(async () => {
+    // 等待DOM更新完成
+    await nextTick();
+    // 延迟一点时间确保容器尺寸正确
+    setTimeout(() => {
+        initChart();
+    }, 100);
+});
+
+// 组件卸载时清理
+onUnmounted(() => {
+    if (myChart) {
+        window.removeEventListener('resize', handleResize);
+        myChart.dispose();
+        myChart = null;
+    }
+});
 </script>

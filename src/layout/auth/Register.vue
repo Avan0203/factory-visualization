@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-01-27 10:00:00
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-01-27 10:00:00
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-09-29 13:13:36
  * @FilePath: /factory-visualization/src/layout/auth/Register.vue
  * @Description: 注册页面组件
 -->
@@ -110,10 +110,10 @@ const loading = ref(false)
 
 // 注册表单数据
 const registerForm = reactive({
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
+  username: 'admin',
+  email: 'admin@123.com',
+  password: '123admin',
+  confirmPassword: '123admin',
   agreement: false
 })
 

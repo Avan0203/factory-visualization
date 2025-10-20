@@ -6,7 +6,7 @@
  * @FilePath: /factory-visualization/src/router/index.js
  * @Description: 路由配置
  */
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import Layout from '../layout/index.vue'
 import Login from '../layout/auth/Login.vue'
 import Register from '../layout/auth/Register.vue'
@@ -46,7 +46,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes
 })
 

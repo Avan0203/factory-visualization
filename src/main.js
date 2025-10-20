@@ -15,7 +15,6 @@ import App from './App.vue'
 import router from './router';
 
 console.log('i am running');
-
 console.log('base: ', import.meta.env.BASE_URL);
 
 const app = createApp(App)
@@ -24,5 +23,8 @@ app.use(router)
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
-app.mount('#app')
+
+console.log('About to mount app to #app');
+const mountedApp = app.mount('#app');
+console.log('App mounted:', mountedApp);
 

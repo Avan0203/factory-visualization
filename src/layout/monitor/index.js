@@ -41,7 +41,8 @@ import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader';
 
-const publicPath = '../../../public/';
+// 使用Vite的环境变量来获取正确的资源路径
+const publicPath = import.meta.env.BASE_URL;
 
 class Monitor {
     constructor(domElement) {
@@ -154,7 +155,7 @@ class Monitor {
 
     #setupSkyBox() {
         const loader = new RGBELoader();
-        loader.load(`${publicPath}/sky.hdr`, (texture) => {
+        loader.load(`${publicPath}sky.hdr`, (texture) => {
             texture.mapping = EquirectangularReflectionMapping;
 
             const hdrScene = new Scene();
@@ -174,7 +175,7 @@ class Monitor {
     #setupModel() {
         const materialMap = new WeakMap();
 
-        this.modelLoader.load(`${publicPath}/factory.glb`, ({ scene: gltfScene }) => {
+        this.modelLoader.load(`${publicPath}factory.glb`, ({ scene: gltfScene }) => {
             console.log('gltfScene: ', gltfScene);
             gltfScene.rotateX(Math.PI / 2);
             gltfScene.scale.set(10, 10, 10);
@@ -306,7 +307,7 @@ class Monitor {
     // 创建精灵图标记
     createSpriteMarkers() {
         // 加载蓝色水滴纹理
-        const blueTexture = this.textureLoader.load(`${publicPath}/blue.png`);
+        const blueTexture = this.textureLoader.load(`${publicPath}blue.png`);
 
         this.building.forEach((building, index) => {
             // 确保整个场景的世界矩阵是最新的（包括gltfScene的变换）

@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-04-17 00:59:57
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-10-20 10:58:43
+ * @LastEditTime: 2025-10-20 11:07:38
  * @FilePath: /factory-visualization/vite.config.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -12,8 +12,8 @@ import vue from '@vitejs/plugin-vue'
 // https://vite.dev/config/
 export default defineConfig({
   // 根据部署环境设置base路径
+  base: '/',
   // base: process.env.NODE_ENV === 'production' ? '/factory-visualization/' : './',
-  base: './',
   plugins: [vue()],
   build: {
     // 输出目录

@@ -7,14 +7,82 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <template>
-    <div ref="chartRef" style="width: 100%;height: 100%;"></div>
+    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+        <!-- 查询表单 -->
+        <el-form :model="queryForm" inline style="margin-bottom: 20px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+            <el-form-item label="起始日期">
+                <el-date-picker
+                    v-model="queryForm.startDate"
+                    type="date"
+                    placeholder="选择起始日期"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 180px;"
+                />
+            </el-form-item>
+            <el-form-item label="结束日期">
+                <el-date-picker
+                    v-model="queryForm.endDate"
+                    type="date"
+                    placeholder="选择结束日期"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 180px;"
+                />
+            </el-form-item>
+            <el-form-item label="仓库名称">
+                <el-select v-model="queryForm.warehouse" placeholder="选择仓库" style="width: 150px;">
+                    <el-option label="全部" value="" />
+                    <el-option label="一号仓库" value="一号仓库" />
+                    <el-option label="二号仓库" value="二号仓库" />
+                    <el-option label="三号仓库" value="三号仓库" />
+                    <el-option label="四号仓库" value="四号仓库" />
+                    <el-option label="五号仓库" value="五号仓库" />
+                    <el-option label="六号仓库" value="六号仓库" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="楼层">
+                <el-select v-model="queryForm.floor" placeholder="选择楼层" style="width: 120px;">
+                    <el-option label="全部" value="" />
+                    <el-option label="一层" value="一层" />
+                    <el-option label="二层" value="二层" />
+                    <el-option label="三层" value="三层" />
+                    <el-option label="四层" value="四层" />
+                    <el-option label="五层" value="五层" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="查询项">
+                <el-select v-model="queryForm.queryType" placeholder="选择查询项" style="width: 120px;">
+                    <el-option label="温度" value="temperature" />
+                    <el-option label="湿度" value="humidity" />
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="handleQuery" :icon="Search">查询</el-button>
+                <el-button @click="handleReset" :icon="Refresh">清空</el-button>
+            </el-form-item>
+        </el-form>
+        
+        <!-- 图表容器 -->
+        <div ref="chartRef" style="flex: 1; width: 100%;"></div>
+    </div>
 </template>
 <script setup>
 import { onMounted, onUnmounted, ref, nextTick } from 'vue';
 import * as echarts from 'echarts';
+import { Search, Refresh } from '@element-plus/icons-vue';
 
 const chartRef = ref(null);
 let myChart = null;
+
+// 查询表单数据
+const queryForm = ref({
+    startDate: '',
+    endDate: '',
+    warehouse: '',
+    floor: '',
+    queryType: 'temperature'
+});
 
 // 初始化图表
 const initChart = () => {
@@ -175,6 +243,42 @@ const handleResize = () => {
     if (myChart) {
         myChart.resize();
     }
+};
+
+// 查询方法
+const handleQuery = () => {
+    console.log('查询条件:', queryForm.value);
+    // 这里可以根据查询条件重新加载图表数据
+    // 目前只是打印查询条件，实际项目中应该调用API获取数据
+    if (myChart) {
+        // 根据查询条件更新图表
+        updateChartData();
+    }
+};
+
+// 清空方法
+const handleReset = () => {
+    queryForm.value = {
+        startDate: '',
+        endDate: '',
+        warehouse: '',
+        floor: '',
+        queryType: 'temperature'
+    };
+    // 重置后重新加载默认数据
+    if (myChart) {
+        updateChartData();
+    }
+};
+
+// 根据查询条件更新图表数据
+const updateChartData = () => {
+    if (!myChart) return;
+    
+    // 这里可以根据查询条件过滤数据
+    // 目前保持原有数据，实际项目中应该根据查询条件获取新数据
+    const option = myChart.getOption();
+    myChart.setOption(option);
 };
 
 // 组件挂载时初始化图表

@@ -1,37 +1,32 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-06-07 03:07:48
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-10-21 10:53:49
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <template>
-    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+    <div style="width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
         <!-- 查询表单 -->
-        <el-form :model="queryForm" inline style="margin-bottom: 20px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
-            <el-form-item label="起始日期">
-                <el-date-picker
-                    v-model="queryForm.startDate"
-                    type="date"
-                    placeholder="选择起始日期"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
-                    style="width: 180px;"
-                />
+        <el-form :model="queryForm" inline
+            style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-date-picker v-model="queryForm.startDate" type="date" placeholder="选择起始日期" format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD" style="width: 160px;" />
             </el-form-item>
-            <el-form-item label="结束日期">
-                <el-date-picker
-                    v-model="queryForm.endDate"
-                    type="date"
-                    placeholder="选择结束日期"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
-                    style="width: 180px;"
-                />
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-date-picker v-model="queryForm.endDate" type="date" placeholder="选择结束日期" format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD" style="width: 160px;" />
             </el-form-item>
-            <el-form-item label="仓库名称">
-                <el-select v-model="queryForm.warehouse" placeholder="选择仓库" style="width: 150px;">
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-select v-model="queryForm.area" placeholder="选择区域" style="width: 120px;">
+                    <el-option label="东区" value="东区" />
+                    <el-option label="西区" value="西区" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-select v-model="queryForm.warehouse" placeholder="选择仓库" style="width: 130px;">
                     <el-option label="全部" value="" />
                     <el-option label="一号仓库" value="一号仓库" />
                     <el-option label="二号仓库" value="二号仓库" />
@@ -41,8 +36,8 @@
                     <el-option label="六号仓库" value="六号仓库" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="楼层">
-                <el-select v-model="queryForm.floor" placeholder="选择楼层" style="width: 120px;">
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-select v-model="queryForm.floor" placeholder="选择楼层" style="width: 100px;">
                     <el-option label="全部" value="" />
                     <el-option label="一层" value="一层" />
                     <el-option label="二层" value="二层" />
@@ -51,29 +46,83 @@
                     <el-option label="五层" value="五层" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="查询项">
-                <el-select v-model="queryForm.queryType" placeholder="选择查询项" style="width: 120px;">
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-select v-model="queryForm.location" placeholder="选择库位" style="width: 100px;">
+                    <el-option label="1" value="1" />
+                    <el-option label="2" value="2" />
+                    <el-option label="3" value="3" />
+                    <el-option label="4" value="4" />
+                    <el-option label="5" value="5" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" style="margin-right: 15px;">
+                <el-select v-model="queryForm.queryType" placeholder="选择查询项" style="width: 100px;">
                     <el-option label="温度" value="temperature" />
                     <el-option label="湿度" value="humidity" />
                 </el-select>
             </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="handleQuery" :icon="Search">查询</el-button>
+            <el-form-item style="margin-right: 0;">
+                <el-button type="primary" @click="handleAdd" :icon="Plus">添加</el-button>
                 <el-button @click="handleReset" :icon="Refresh">清空</el-button>
             </el-form-item>
         </el-form>
-        
+
+        <!-- 标签区域 -->
+        <div style="padding: 8px; background: #f9f9f9; border-radius: 4px; flex-shrink: 0; min-height: 30px; display: flex; flex-wrap: wrap; align-items: flex-start;">
+            <el-tag 
+                v-for="tag in tags" 
+                :key="tag.id" 
+                closable 
+                :type="tag.type"
+                @close="handleTagClose(tag)"
+                style="margin-right: 8px; margin-bottom: 5px;"
+            >
+                {{ tag.name }}
+            </el-tag>
+        </div>
+
         <!-- 图表容器 -->
-        <div ref="chartRef" style="flex: 1; width: 100%;"></div>
+        <div ref="chartRef" style="flex: 1; width: 100%; min-height: 0;"></div>
     </div>
 </template>
 <script setup>
 import { onMounted, onUnmounted, ref, nextTick } from 'vue';
 import * as echarts from 'echarts';
-import { Search, Refresh } from '@element-plus/icons-vue';
+import { Refresh, Plus } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
 const chartRef = ref(null);
 let myChart = null;
+
+// 生成日期范围（今天前15天到后15天）
+const generateDateRange = () => {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 15);
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + 15);
+    
+    return {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+    };
+};
+
+// 生成日期标签
+const generateDateLabels = () => {
+    const today = new Date();
+    const labels = [];
+    
+    for (let i = -15; i <= 15; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        labels.push(`${month}-${day}`);
+    }
+    
+    return labels;
+};
 
 // 查询表单数据
 const queryForm = ref({
@@ -81,17 +130,33 @@ const queryForm = ref({
     endDate: '',
     warehouse: '',
     floor: '',
+    area: '',
+    location: '',
     queryType: 'temperature'
 });
+
+// 标签数据
+const tags = ref([]);
+
+// 图表数据
+const chartData = ref({
+    series: []
+});
+
+// 日期标签
+const dateLabels = ref([]);
 
 // 初始化图表
 const initChart = () => {
     if (chartRef.value && !myChart) {
         myChart = echarts.init(chartRef.value);
-        
+
+        // 生成日期标签
+        dateLabels.value = generateDateLabels();
+
         const option = {
             title: {
-                text: '环境温度',
+                text: '环境监测',
                 left: 'center'
             },
             tooltip: {
@@ -124,115 +189,21 @@ const initChart = () => {
             ],
             xAxis: {
                 type: 'category',
-                name: '趋势',
-                data: [
-                    '05-01', '05-03', '05-05', '05-07', '05-09', '05-11', '05-13', '05-15',
-                    '05-17', '05-19', '05-21', '05-23', '05-25', '05-27', '05-29', '05-31',
-                    '06-02', '06-04', '06-06', '06-08', '06-10', '06-12', '06-14', '06-16',
-                    '06-18', '06-20'
-                ]
+                name: '时间',
+                data: dateLabels.value
             },
             yAxis: {
                 type: 'value',
-                name: '环境温度℃',
+                name: '数值',
                 min: 1,
                 max: 36,
                 interval: 2.5
             },
-            series: [
-                {
-                    name: '一号仓库五层东区1号',
-                    type: 'line',
-                    symbol: 'circle',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.0, 22.2, 22.5, 22.8, 23.0, 24.0, 25.2, 26.5, 27.8, 28.2, 27.6, 26.1, 23.5, 21.0, 19.8, 18.5, 18.0, 20.2, 23.5, 25.5, 28.0, 31.0, 29.2, 27.5, 26.0, 24.5]
-                },
-                {
-                    name: '一号仓库五层东区2号',
-                    type: 'line',
-                    symbol: 'rect',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.1, 22.4, 22.7, 23.0, 23.3, 24.2, 25.5, 26.8, 28.0, 28.3, 27.7, 26.2, 23.8, 21.3, 20.0, 18.8, 18.2, 20.4, 23.7, 25.8, 28.3, 31.3, 29.5, 27.8, 26.3, 24.8]
-                },
-                {
-                    name: '一号仓库五层东区3号',
-                    type: 'line',
-                    symbol: 'diamond',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.3, 22.5, 22.8, 23.1, 23.5, 24.5, 25.8, 27.0, 28.2, 28.5, 28.0, 26.6, 24.0, 21.5, 20.2, 19.0, 18.5, 20.6, 24.0, 26.0, 28.5, 31.5, 29.8, 28.0, 26.5, 25.0]
-                },
-                {
-                    name: '二号仓库五层西区1号',
-                    type: 'line',
-                    symbol: 'triangle',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [21.8, 22.0, 22.2, 22.5, 22.7, 23.5, 24.7, 25.8, 27.0, 27.5, 26.9, 25.3, 22.7, 20.2, 19.0, 17.8, 17.5, 19.5, 22.5, 24.5, 27.0, 30.0, 28.3, 26.5, 25.0, 23.5]
-                },
-                {
-                    name: '二号仓库五层西区2号',
-                    type: 'line',
-                    symbol: 'pin',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.0, 22.2, 22.5, 22.8, 23.0, 24.0, 25.2, 26.5, 27.8, 28.0, 27.4, 26.0, 23.4, 20.9, 19.7, 18.2, 17.9, 19.8, 23.0, 25.0, 27.5, 30.5, 28.7, 26.8, 25.3, 24.0]
-                },
-                {
-                    name: '三号仓库五层东区1号',
-                    type: 'line',
-                    symbol: 'arrow',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [21.5, 21.8, 22.1, 22.4, 22.6, 23.6, 24.8, 26.0, 27.2, 27.6, 27.0, 25.5, 23.0, 20.5, 19.3, 18.0, 17.6, 19.6, 22.8, 24.8, 27.2, 30.2, 28.4, 26.7, 25.2, 23.8]
-                },
-                {
-                    name: '三号仓库五层东区2号',
-                    type: 'line',
-                    symbol: 'none',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [21.7, 22.0, 22.3, 22.6, 22.9, 23.9, 25.1, 26.2, 27.4, 27.8, 27.2, 25.7, 23.2, 20.7, 19.5, 18.3, 17.8, 19.9, 23.2, 25.2, 27.6, 30.6, 28.9, 27.0, 25.5, 24.2]
-                },
-                {
-                    name: '四号仓库五层西区1号',
-                    type: 'line',
-                    symbol: 'roundRect',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.2, 22.4, 22.6, 22.9, 23.1, 24.1, 25.3, 26.6, 27.9, 28.3, 27.7, 26.1, 23.6, 21.1, 19.9, 18.6, 18.2, 20.3, 23.6, 25.6, 28.1, 31.1, 29.4, 27.6, 26.1, 24.6]
-                },
-                {
-                    name: '四号仓库五层西区2号',
-                    type: 'line',
-                    symbol: 'star',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.3, 22.5, 22.8, 23.0, 23.3, 24.3, 25.5, 26.7, 28.0, 28.4, 27.8, 26.3, 23.7, 21.2, 20.0, 18.7, 18.3, 20.4, 23.7, 25.7, 28.2, 31.2, 29.5, 27.7, 26.2, 24.7]
-                },
-                {
-                    name: '五号仓库五层东区1号',
-                    type: 'line',
-                    symbol: 'circle',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [22.0, 22.3, 22.6, 22.9, 23.1, 24.1, 25.3, 26.4, 27.7, 28.1, 27.5, 26.0, 23.5, 21.0, 19.8, 18.5, 18.1, 20.2, 23.5, 25.5, 28.0, 31.0, 29.2, 27.4, 25.9, 24.4]
-                },
-                {
-                    name: '六号仓库五层西区1号',
-                    type: 'line',
-                    symbol: 'rect',
-                    symbolSize: 6,
-                    smooth: true,
-                    data: [21.9, 22.1, 22.4, 22.7, 23.0, 24.0, 25.2, 26.3, 27.6, 28.0, 27.4, 25.9, 23.4, 20.9, 19.7, 18.4, 18.0, 20.1, 23.4, 25.4, 27.9, 30.9, 29.1, 27.3, 25.8, 24.3]
-                }
-            ]
+            series: chartData.value.series
         };
-        
+
         myChart.setOption(option);
-        
+
         // 添加窗口大小变化监听
         window.addEventListener('resize', handleResize);
     }
@@ -245,15 +216,101 @@ const handleResize = () => {
     }
 };
 
-// 查询方法
-const handleQuery = () => {
-    console.log('查询条件:', queryForm.value);
-    // 这里可以根据查询条件重新加载图表数据
-    // 目前只是打印查询条件，实际项目中应该调用API获取数据
-    if (myChart) {
-        // 根据查询条件更新图表
-        updateChartData();
+// 生成随机数据
+const generateRandomData = (count = 31) => {
+    const data = [];
+    for (let i = 0; i < count; i++) {
+        // 生成18-32之间的随机温度数据
+        data.push(Number((18 + Math.random() * 14).toFixed(1)));
     }
+    return data;
+};
+
+// 添加方法
+const handleAdd = () => {
+    // 验证必选字段
+    if (!queryForm.value.area || !queryForm.value.warehouse || !queryForm.value.location || !queryForm.value.queryType) {
+        ElMessage.warning('请选择必要选项：地区、库名、库位、查询项');
+        return;
+    }
+
+    // 生成标签名称
+    const tagName = `${queryForm.value.area}${queryForm.value.warehouse}${queryForm.value.floor}${queryForm.value.location}位`;
+    
+    // 检查是否已存在相同的标签
+    const existingTag = tags.value.find(tag => tag.name === tagName);
+    if (existingTag) {
+        ElMessage.warning('该位置已存在，请勿重复添加');
+        return;
+    }
+
+    // 生成随机数据
+    const randomData = generateRandomData();
+    
+    // 创建新的标签
+    const newTag = {
+        id: Date.now(),
+        name: tagName,
+        type: 'primary',
+        data: randomData,
+        queryType: queryForm.value.queryType
+    };
+
+    // 添加到标签列表
+    tags.value.push(newTag);
+
+    // 创建图表系列数据
+    const symbolTypes = ['circle', 'rect', 'diamond', 'triangle', 'pin', 'arrow', 'roundRect', 'star'];
+    const symbolType = symbolTypes[chartData.value.series.length % symbolTypes.length];
+    
+    const newSeries = {
+        name: tagName,
+        type: 'line',
+        symbol: symbolType,
+        symbolSize: 6,
+        smooth: true,
+        data: randomData
+    };
+
+    // 添加到图表数据
+    chartData.value.series.push(newSeries);
+
+    // 更新图表
+    updateChartData();
+
+    // 清空表单
+    queryForm.value = {
+        startDate: '',
+        endDate: '',
+        warehouse: '',
+        floor: '',
+        area: '',
+        location: '',
+        queryType: 'temperature'
+    };
+
+    ElMessage.success('添加成功');
+};
+
+// 标签删除方法
+const handleTagClose = (tag) => {
+    // 从标签列表中移除
+    const tagIndex = tags.value.findIndex(t => t.id === tag.id);
+    if (tagIndex > -1) {
+        tags.value.splice(tagIndex, 1);
+        console.log('标签已从列表中移除');
+    }
+
+    // 从图表数据中移除对应的系列
+    const seriesIndex = chartData.value.series.findIndex(s => s.name === tag.name);
+    if (seriesIndex > -1) {
+        chartData.value.series.splice(seriesIndex, 1);
+        console.log('系列已从图表数据中移除');
+    }
+    // 更新图表
+    updateChartData();
+    
+    ElMessage.success('删除成功');
 };
 
 // 清空方法
@@ -263,26 +320,76 @@ const handleReset = () => {
         endDate: '',
         warehouse: '',
         floor: '',
+        area: '',
+        location: '',
         queryType: 'temperature'
     };
-    // 重置后重新加载默认数据
-    if (myChart) {
-        updateChartData();
-    }
 };
 
 // 根据查询条件更新图表数据
 const updateChartData = () => {
     if (!myChart) return;
-    
-    // 这里可以根据查询条件过滤数据
-    // 目前保持原有数据，实际项目中应该根据查询条件获取新数据
-    const option = myChart.getOption();
-    myChart.setOption(option);
+
+    // 更新图表配置
+    const option = {
+        title: {
+            text: '环境监测',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'cross' }
+        },
+        legend: {
+            type: 'scroll',
+            orient: 'vertical',
+            right: 0,
+            top: 20,
+            bottom: 20,
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: {},
+                dataZoom: {},
+                restore: {}
+            }
+        },
+        dataZoom: [
+            {
+                type: 'slider',
+                xAxisIndex: 0
+            },
+            {
+                type: 'inside',
+                xAxisIndex: 0
+            }
+        ],
+        xAxis: {
+            type: 'category',
+            name: '时间',
+            data: dateLabels.value
+        },
+        yAxis: {
+            type: 'value',
+            name: '数值',
+            min: 1,
+            max: 36,
+            interval: 2.5
+        },
+        series: chartData.value.series
+    };
+
+    console.log('设置图表选项，系列数量:', option.series.length);
+    myChart.setOption(option, true); // 使用true强制重新渲染
 };
 
 // 组件挂载时初始化图表
 onMounted(async () => {
+    // 设置默认日期范围
+    const dateRange = generateDateRange();
+    queryForm.value.startDate = dateRange.start;
+    queryForm.value.endDate = dateRange.end;
+    
     // 等待DOM更新完成
     await nextTick();
     // 延迟一点时间确保容器尺寸正确

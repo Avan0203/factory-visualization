@@ -33,20 +33,20 @@
 
         </el-header>
         <el-main>
-            <div v-show="activeIndex == 1" style="width: 100%; height: 100%;">
+            <div v-show="activeIndex == '1'" style="width: 100%; height: 100%;">
                 <monitor />
             </div>
-            <div v-show="activeIndex == 2" style="width: 100%; height: 100%;">
+            <div v-show="activeIndex == '2'" style="width: 100%; height: 100%;">
                 <chart />
             </div>
-            <div v-show="activeIndex == 3" style="width: 100%; height: 100%;">
+            <div v-show="activeIndex == '3'" style="width: 100%; height: 100%;">
                 <table-ref />
             </div>
         </el-main>
     </el-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ElMenu, ElMenuItem, ElContainer, ElHeader, ElMain, ElCol, ElRow, ElButton, ElMessage, ElMessageBox } from 'element-plus';
 import { Operation, Setting, SwitchButton, Refresh } from '@element-plus/icons-vue';
 import { ref, onMounted, watch, nextTick } from 'vue';
@@ -98,10 +98,11 @@ const handleLogout = () => {
 
 // 检查认证状态
 const checkAuth = () => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-    if (isLoggedIn !== 'true') {
-        router.push('/login');
-    }
+    // NOTE：暂时跳过认证检查
+    // const isLoggedIn = localStorage.getItem('isLoggedIn');
+    // if (isLoggedIn !== 'true') {
+    //     router.push('/login');
+    // }
 }
 
 onMounted(() => {

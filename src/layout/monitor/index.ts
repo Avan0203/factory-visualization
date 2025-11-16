@@ -19,8 +19,6 @@ import {
     PMREMGenerator,
     SphereGeometry,
     MeshBasicMaterial,
-    DirectionalLightHelper,
-    CameraHelper,
     Raycaster,
     Vector2,
     Vector3,
@@ -32,28 +30,49 @@ import {
     Box3Helper,
     CanvasTexture
 } from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
-import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
-import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 
 // 使用Vite的环境变量来获取正确的资源路径
 const publicPath = import.meta.env.BASE_URL;
 
+const mouse = new Vector2();
+const raycaster = new Raycaster();
+const modelLoader = new GLTFLoader();
+const textureLoader = new TextureLoader();
+
+let animationTime = 0;
+
 class Monitor {
-    constructor(domElement) {
+    scene: Scene;
+    camera: PerspectiveCamera;
+    renderer: WebGLRenderer;
+    composer: EffectComposer;
+    renderPass: RenderPass;
+    outlinePass: OutlinePass;
+    gammaPass: ShaderPass;
+    controls: OrbitControls;
+    spriteMarkers: any[];
+    building: any[];
+    selectedBuilding: Mesh | null;
+    constructor(private domElement) {
         this.scene = new Scene();
-        this.camera = new PerspectiveCamera(75, domElement.clientWidth / domElement.clientHeight, 0.1, 5000);
+        // 收紧深度范围以提升深度精度，缓解摩尔纹/闪烁
+        this.camera = new PerspectiveCamera(75, domElement.clientWidth / domElement.clientHeight, 10, 2000);
         this.camera.up.set(0, 0, 1);
         this.camera.updateProjectionMatrix();
         this.camera.position.set(0, -100, 400);
 
-        this.renderer = new WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        // 关闭 logarithmicDepthBuffer（与后处理组合可能导致采样伪影），改用更合理的近远裁剪面
+        this.renderer = new WebGLRenderer({ antialias: true });
         this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.outputColorSpace = SRGBColorSpace;
         this.renderer.shadowMap.enabled = true;
         
@@ -92,21 +111,14 @@ class Monitor {
         // this.controls.maxDistance = 120;
         // this.controls.maxPolarAngle = MathUtils.degToRad(85);
 
-        this.modelLoader = new GLTFLoader();
-        this.textureLoader = new TextureLoader();
-
         // 初始化outline相关属性
-        this.raycaster = new Raycaster();
-        this.mouse = new Vector2();
         this.building = [];
         this.selectedBuilding = null;
 
         // 初始化精灵图相关属性
         this.spriteMarkers = [];
-        this.animationTime = 0;
 
         // 添加点击事件监听器
-        this.domElement = domElement;
         this.addClickListeners();
 
         // 添加窗口大小调整监听器
@@ -174,12 +186,12 @@ class Monitor {
 
     #setupModel() {
 
-        this.modelLoader.load(`${publicPath}factory.glb`, ({ scene: gltfScene }) => {
+        modelLoader.load(`${publicPath}factory.glb`, ({ scene: gltfScene }) => {
             console.log('gltfScene: ', gltfScene);
             gltfScene.rotateX(Math.PI / 2);
             gltfScene.scale.set(10, 10, 10);
             gltfScene.traverse((child) => {
-                if (child.isMesh) {
+                if (child instanceof Mesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
                 }
@@ -231,16 +243,14 @@ class Monitor {
     onMouseClick(event) {
         // 计算鼠标在屏幕上的坐标
         const rect = this.domElement.getBoundingClientRect();
-        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         // 更新raycaster
-        this.raycaster.setFromCamera(this.mouse, this.camera);
+        raycaster.setFromCamera(mouse, this.camera);
 
         // 检测与场景中所有对象的碰撞（包括building group中的mesh）
-        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-
-        console.log('点击检测:', intersects.length, '个交点');
+        const intersects = raycaster.intersectObjects(this.scene.children, true);
 
         if (intersects.length > 0) {
             // 找到被点击的对象
@@ -306,7 +316,7 @@ class Monitor {
     // 创建精灵图标记
     createSpriteMarkers() {
         // 加载蓝色水滴纹理
-        const blueTexture = this.textureLoader.load(`${publicPath}blue.png`);
+        const blueTexture = textureLoader.load(`${publicPath}blue.png`);
 
         this.building.forEach((building, index) => {
             // 确保整个场景的世界矩阵是最新的（包括gltfScene的变换）
@@ -418,7 +428,7 @@ class Monitor {
 
     // 更新精灵图动画
     updateSpriteAnimation() {
-        this.animationTime += 0.016; // 约60fps
+        animationTime += 0.016; // 约60fps
 
         this.spriteMarkers.forEach(spriteGroup => {
             const { originalZ, floatRange, speed, building } = spriteGroup.userData;
@@ -439,7 +449,7 @@ class Monitor {
             spriteGroup.position.set(
                 worldCenter.x,
                 worldCenter.y,
-                baseZ + Math.sin(this.animationTime * speed) * floatRange
+                baseZ + Math.sin(animationTime * speed) * floatRange
             );
         });
     }

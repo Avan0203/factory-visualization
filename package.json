@@ -4,13 +4,12 @@
   "version": "1.0.0",
   "description": "工厂可视化系统 - 基于Vue3 + Three.js + ECharts",
   "type": "module",
-  "homepage": "https://你的用户名.github.io/factory-visualization/",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "type-check": "vue-tsc --noEmit",
+    "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "build:prod": "NODE_ENV=production vite build",
-    "deploy": "./deploy.sh",
     "serve": "vite preview --port 4173 --host",
     "npm:build": "NODE_ENV=production vite build",
     "npm:preview": "vite preview"
@@ -24,8 +23,12 @@
     "vue-router": "4"
   },
   "devDependencies": {
+    "@types/three": "^0.175.0",
+    "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^5.2.2",
     "terser": "^5.44.0",
-    "vite": "^6.3.0"
+    "vite": "^6.3.0",
+    "typescript": "^5.6.3",
+    "vue-tsc": "^2.0.28"
   }
 }

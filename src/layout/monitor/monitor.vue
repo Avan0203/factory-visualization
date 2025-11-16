@@ -1,7 +1,7 @@
 <template>
     <div style="width: 100%; height: 100%;" ref="containerRef"></div>
 </template>
-<script setup>
+<script setup lang="ts">
 import { onMounted ,ref} from 'vue';
 import Monitor from './index';
 const containerRef = ref(null);

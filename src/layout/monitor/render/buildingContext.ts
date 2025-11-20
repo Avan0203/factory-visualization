@@ -9,12 +9,10 @@
 
 import {
     Scene,
-    PerspectiveCamera,
     AmbientLight,
     DirectionalLight,
     WebGLRenderer,
     Mesh,
-    TextureLoader,
     EquirectangularReflectionMapping,
     PMREMGenerator,
     SphereGeometry,
@@ -27,15 +25,9 @@ import {
     CanvasTexture,
     Object3D
 } from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { Context } from './context';
-
-// 使用Vite的环境变量来获取正确的资源路径
-const publicPath = import.meta.env.BASE_URL;
-
-const modelLoader = new GLTFLoader();
-const textureLoader = new TextureLoader();
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { publicPath, gltfLoader, textureLoader, rgbeloader } from '../../../shard';
 
 let animationTime = 0;
 
@@ -44,8 +36,8 @@ class BuildingContext extends Context {
     private selectedBuilding: Object3D | null = null;
     private spriteMarkers: Group[] = [];
 
-    constructor(private renderer: WebGLRenderer) {
-        super();
+    constructor(renderer: WebGLRenderer) {
+        super(renderer);
         // 使用默认的 Y 轴向上（不需要设置 camera.up）
         this.camera.updateProjectionMatrix();
         // 调整相机位置：Y 轴向上，相机在 Y 轴上方，看向原点
@@ -56,6 +48,18 @@ class BuildingContext extends Context {
 
         // 初始化场景
         this.setup(renderer);
+    }
+
+    launch(controls:OrbitControls): void {
+        //限制旋转角度
+        controls.maxPolarAngle = Math.PI / 2;
+        //限制缩放范围
+        controls.minZoom = 0.3;
+        controls.maxZoom = 3;
+        // 限制移动范围
+        controls.minDistance = 100;
+        controls.maxDistance = 1000;
+        super.launch(controls);
     }
 
     setup(renderer: WebGLRenderer): void {
@@ -89,8 +93,7 @@ class BuildingContext extends Context {
     }
 
     #setupSkyBox(renderer: WebGLRenderer): void {
-        const loader = new RGBELoader();
-        loader.load(`${publicPath}sky.hdr`, (texture) => {
+        rgbeloader.load(`${publicPath}sky.hdr`, (texture) => {
             texture.mapping = EquirectangularReflectionMapping;
 
             const hdrScene = new Scene();
@@ -112,7 +115,7 @@ class BuildingContext extends Context {
     }
 
     #setupModel(): void {
-        modelLoader.load(`${publicPath}factory.glb`, ({ scene: gltfScene }) => {
+        gltfLoader.load(`${publicPath}factory.glb`, ({ scene: gltfScene }) => {
             console.log('gltfScene: ', gltfScene);
             // Y 轴向上，如果模型是 Z 轴向上，需要旋转
             // 如果模型已经是 Y 轴向上，则不需要旋转

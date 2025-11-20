@@ -5,7 +5,8 @@ import {
     Raycaster,
     Object3D,
     Scene,
-    PerspectiveCamera
+    PerspectiveCamera,
+    ACESFilmicToneMapping,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -14,6 +15,7 @@ import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 import { IContext } from './context';
+import EventListener from '../../../shard/event';
 
 interface IRender {
     readonly renderer: WebGLRenderer;
@@ -25,7 +27,7 @@ interface IRender {
     dispose(): void;
 }
 
-class Render implements IRender {
+class Render extends EventListener implements IRender {
     readonly renderer: WebGLRenderer;
     readonly domElement: HTMLElement;
     private _currentContext: IContext | null = null;
@@ -40,6 +42,7 @@ class Render implements IRender {
     private resizeHandler: () => void;
 
     constructor(domElement: HTMLElement) {
+        super();
         this.domElement = domElement;
         this.mouse = new Vector2();
         this.raycaster = new Raycaster();
@@ -49,23 +52,26 @@ class Render implements IRender {
         this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.outputColorSpace = SRGBColorSpace;
+        // 设置 toneMapping 以正确渲染 PBR 材质（MeshStandardMaterial）
+        this.renderer.toneMapping = ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
         this.renderer.shadowMap.enabled = true;
         domElement.appendChild(this.renderer.domElement);
 
         // 初始化 EffectComposer（需要先有 context，所以先创建空的）
         this.composer = new EffectComposer(this.renderer);
 
-        // 初始化 RenderPass（占位，会在 switchContext 时更新）
-        const placeholderScene = new Scene();
-        const placeholderCamera = new PerspectiveCamera();
-        this.renderPass = new RenderPass(placeholderScene, placeholderCamera);
+        // // 初始化 RenderPass（占位，会在 switchContext 时更新）
+        const tempCamera = new PerspectiveCamera();
+        const tempScene = new Scene();
+        this.renderPass = new RenderPass(tempScene, tempCamera);
         this.composer.addPass(this.renderPass);
 
-        // 初始化 OutlinePass
+        // // 初始化 OutlinePass
         this.outlinePass = new OutlinePass(
             new Vector2(domElement.clientWidth, domElement.clientHeight),
-            placeholderScene,
-            placeholderCamera
+            tempScene,
+            tempCamera
         );
         this.outlinePass.edgeStrength = 3.0;
         this.outlinePass.edgeGlow = 2.0;
@@ -75,15 +81,11 @@ class Render implements IRender {
         this.outlinePass.hiddenEdgeColor.set('#0088ff');
         this.composer.addPass(this.outlinePass);
 
-        // 添加伽马校正 Pass
+        // // 添加伽马校正 Pass
         this.gammaPass = new ShaderPass(GammaCorrectionShader);
         this.composer.addPass(this.gammaPass);
 
-        // 初始化 OrbitControls（占位，会在 switchContext 时更新）
-        this.controls = new OrbitControls(
-            placeholderCamera,
-            this.renderer.domElement
-        );
+        this.controls = new OrbitControls(tempCamera,this.renderer.domElement);
 
         // 绑定事件处理器
         this.clickHandler = (event: MouseEvent) => this.onMouseClick(event);
@@ -120,12 +122,18 @@ class Render implements IRender {
         this.outlinePass.renderScene = context.scene;
         this.outlinePass.renderCamera = context.camera;
 
-        // 更新 OrbitControls 的 camera
+        // 更新 controls 的 camera
         this.controls.object = context.camera;
+        this.controls.target.set(0, 0, 0);
         this.controls.update();
+
+        context.launch(this.controls);
 
         // 清空之前的选择
         this.outlinePass.selectedObjects = [];
+
+        // 切换后立即更新相机宽高比和渲染器大小
+        this.resize();
     }
 
     private onMouseClick(event: MouseEvent): void {
@@ -157,10 +165,12 @@ class Render implements IRender {
                 this._currentContext.activate(selectableObject);
                 // 更新 OutlinePass
                 this.outlinePass.selectedObjects = [selectableObject];
+                this.emit('select', selectableObject);
             } else {
                 // 点击的不是可选对象，取消选择
                 this._currentContext.deactivate();
                 this.outlinePass.selectedObjects = [];
+                this.emit('unselect');
             }
         } else {
             // 点击空白区域，取消选择
@@ -194,7 +204,6 @@ class Render implements IRender {
         // 调用 context 的 animate 方法
         this._currentContext.animate(0.016); // 约60fps的deltaTime
 
-        // 渲染
         this.composer.render();
     }
 
@@ -204,17 +213,16 @@ class Render implements IRender {
         const width = this.domElement.clientWidth;
         const height = this.domElement.clientHeight;
 
+        // 防止容器尺寸为 0
+        if (width === 0 || height === 0) return;
+
         // 更新相机宽高比
         this._currentContext.camera.aspect = width / height;
         this._currentContext.camera.updateProjectionMatrix();
 
         // 更新渲染器大小
         this.renderer.setSize(width, height);
-
-        // 更新 EffectComposer
         this.composer.setSize(width, height);
-
-        // 更新 OutlinePass
         this.outlinePass.setSize(width, height);
     }
 

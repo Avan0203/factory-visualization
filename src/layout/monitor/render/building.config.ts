@@ -1,0 +1,20 @@
+export const buildingConfig = {
+    1:{
+        floor:5,
+    },
+    2:{
+        floor:5,
+    },
+    3:{
+        floor:5,
+    },
+    4:{
+        floor:5,
+    },
+    5:{
+        floor:5,
+    },
+    6:{
+        floor:5,
+    },
+};

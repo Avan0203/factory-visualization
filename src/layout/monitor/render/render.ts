@@ -149,7 +149,7 @@ class Render extends EventListener implements IRender {
 
         // 检测与场景中所有对象的碰撞
         const intersects = this.raycaster.intersectObjects(
-            this._currentContext.scene.children,
+            this._currentContext.selection,
             true
         );
 
@@ -159,6 +159,7 @@ class Render extends EventListener implements IRender {
 
             // 查找这个对象是否在 selection 数组中，或者其父级在 selection 中
             const selectableObject = this.findSelectableObject(clickedObject);
+            console.log('selectableObject: ', selectableObject);
 
             if (selectableObject) {
                 // 调用 context 的 activate 方法
@@ -181,6 +182,8 @@ class Render extends EventListener implements IRender {
 
     private findSelectableObject(object: Object3D): Object3D | null {
         if (!this._currentContext) return null;
+        console.log('findSelectableObject: ', object);
+        console.log('selection: ', this._currentContext.selection);
 
         let current: Object3D | null = object;
 
@@ -191,6 +194,7 @@ class Render extends EventListener implements IRender {
             }
             current = current.parent;
         }
+        console.log();console.log();
 
         return null;
     }

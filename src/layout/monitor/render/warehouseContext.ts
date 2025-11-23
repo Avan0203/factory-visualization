@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-20 12:42:52
+ * @LastEditTime: 2025-11-20 13:26:22
  * @FilePath: /factory-visualization/src/layout/monitor/warehouseContext.ts
  * @Description: WarehouseContext - 仓库场景上下文
  */
@@ -17,7 +17,6 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Context } from './context';
 import { publicPath, gltfLoader } from '../../../shard';
-import { thickness } from 'three/tsl';
 
 class WarehouseContext extends Context {
     private selectedGoods: Object3D | null = null;

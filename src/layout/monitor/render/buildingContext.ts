@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-10-20 14:49:12
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-11-23 19:02:41
  * @FilePath: /factory-visualization/src/layout/monitor/buildingContext.ts
  * @Description: BuildingContext - 建筑场景上下文
  */
@@ -23,7 +23,8 @@ import {
     SpriteMaterial,
     Box3,
     CanvasTexture,
-    Object3D
+    Object3D,
+    Texture
 } from 'three';
 import { Context } from './context';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -35,37 +36,53 @@ class BuildingContext extends Context {
     private building: Object3D[] = [];
     private selectedBuilding: Object3D | null = null;
     private spriteMarkers: Group[] = [];
+    private data: {
+        layer1: Object3D;
+        layer2: Object3D;
+        layer1Selection: Object3D[];
+        layer2Selection: Object3D[];
+    };
 
     constructor(renderer: WebGLRenderer) {
         super(renderer);
         // 使用默认的 Y 轴向上（不需要设置 camera.up）
         this.camera.updateProjectionMatrix();
         // 调整相机位置：Y 轴向上，相机在 Y 轴上方，看向原点
-        this.camera.position.set(0, 400, 100);
+        this.camera.position.set(0, 400, -100);
 
         // 初始化 selection 数组（用于存储可选择的建筑）
         this.selection = [];
 
         // 初始化场景
         this.setup(renderer);
+        this.data = {
+            layer1: new Object3D(),
+            layer2: new Object3D(),
+            layer1Selection: [],
+            layer2Selection: []
+        };
     }
 
-    launch(controls:OrbitControls): void {
-        //限制旋转角度
-        controls.maxPolarAngle = Math.PI / 2;
-        //限制缩放范围
-        controls.minZoom = 0.3;
-        controls.maxZoom = 3;
-        // 限制移动范围
-        controls.minDistance = 100;
-        controls.maxDistance = 1000;
+    launch(controls: OrbitControls): void {
+        // //限制旋转角度
+        // controls.maxPolarAngle = Math.PI / 2;
+        // //限制缩放范围
+        // controls.minZoom = 0.3;
+        // controls.maxZoom = 3;
+        // // 限制移动范围
+        // controls.minDistance = 100;
+        // controls.maxDistance = 1000;
+        this.camera.position.set(0, 120, -600);
+
         super.launch(controls);
     }
 
-    setup(renderer: WebGLRenderer): void {
+    async setup(renderer: WebGLRenderer): Promise<void> {
         this.#setupSkyBox(renderer);
         this.#setupLights();
-        this.#setupModel();
+        await this.#setupModel();
+        await this.#createSpriteMarkers();
+        this.emit('setupContext');
     }
 
     #setupLights(): void {
@@ -114,37 +131,51 @@ class BuildingContext extends Context {
         });
     }
 
-    #setupModel(): void {
-        gltfLoader.load(`${publicPath}factory.glb`, ({ scene: gltfScene }) => {
+    async #setupModel(): Promise<void> {
+        await gltfLoader.loadAsync(`${publicPath}factory.glb`).then((gltf) => {
+            const gltfScene = gltf.scene;
             console.log('gltfScene: ', gltfScene);
-            // Y 轴向上，如果模型是 Z 轴向上，需要旋转
-            // 如果模型已经是 Y 轴向上，则不需要旋转
-            // 这里先移除旋转，如果模型方向不对，再调整
-            // gltfScene.rotateX(Math.PI / 2);
             gltfScene.scale.set(10, 10, 10);
             gltfScene.traverse((child) => {
                 if (child instanceof Mesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
                 }
-
-                if (child.name.includes('buillding')) {
-                    // 将building group添加到数组中
-                    this.building.push(child);
-                    // 为每个建筑添加用户数据，用于标识
-                    child.userData = { type: 'building', original: child };
+                if (child.name === 'layer1') {
+                    this.data.layer1 = child;
                 }
+                if (child.name === 'layer2') {
+                    this.data.layer2 = child;
+                }
+
+                if (child.name.includes('building')) {
+                    if (this.data.layer1 === child.parent) {
+                        this.data.layer1Selection.push(child);
+                    }
+                    if (this.data.layer2 === child.parent) {
+                        this.data.layer2Selection.push(child);
+                    }
+                }
+
             });
 
             this.scene.add(gltfScene);
-            console.log('building groups: ', this.building);
 
             // 将 building 数组添加到 selection 中，使其可以被选择
-            this.selection = [...this.building];
-
-            // 创建精灵图标记（在场景变换之后）
-            this.createSpriteMarkers();
+            this.selection = [...this.data.layer1Selection, ...this.data.layer2Selection];
         });
+    }
+
+    switchLayer(layer: 0 | 1) {
+        if (layer === 0) {
+            this.data.layer1.visible = true;
+            this.data.layer2.visible = false;
+            this.selection = this.data.layer1Selection;
+        } else {
+            this.data.layer1.visible = false;
+            this.data.layer2.visible = true;
+            this.selection = this.data.layer2Selection;
+        }
     }
 
     // 激活选择（选择建筑）
@@ -186,14 +217,34 @@ class BuildingContext extends Context {
     }
 
     // 创建精灵图标记
-    createSpriteMarkers(): void {
-        // 加载蓝色水滴纹理
-        const blueTexture = textureLoader.load(`${publicPath}blue.png`);
+    async #createSpriteMarkers(): Promise<void> {
 
-        this.building.forEach((building, index) => {
+        console.log('开始创建精灵标记，layer1 可见:', this.data.layer1.visible, 'layer2 可见:', this.data.layer2.visible);
+
+        // 等待纹理加载完成
+        const blueTexture = await new Promise<Texture>((resolve, reject) => {
+            textureLoader.load(
+                `${publicPath}blue.png`,
+                (texture) => {
+                    console.log('蓝色纹理加载完成');
+                    resolve(texture);
+                },
+                undefined,
+                (error) => {
+                    console.error('蓝色纹理加载失败:', error);
+                    reject(error);
+                }
+            );
+        });
+
+        this.scene.updateMatrixWorld(true);
+
+
+   
+        const createMarkerGroup = (building: Object3D, index: number, layer: Object3D) => {
             // 确保整个场景的世界矩阵是最新的（包括gltfScene的变换）
-            this.scene.updateMatrixWorld(true);
             building.updateMatrixWorld(true);
+            layer.updateMatrixWorld(true);
 
             // 直接使用setFromObject，它会自动考虑所有父级变换（包括gltfScene的旋转和缩放）
             const worldBox = new Box3().setFromObject(building);
@@ -201,6 +252,17 @@ class BuildingContext extends Context {
             // 获取世界坐标的中心和尺寸
             const worldCenter = worldBox.getCenter(new Vector3());
             const worldSize = worldBox.getSize(new Vector3());
+
+            // 计算精灵在世界坐标中的位置（建筑顶部上方）
+            const worldSpritePosition = new Vector3(
+                worldCenter.x,
+                worldCenter.y + worldSize.y / 2 + 25,
+                worldCenter.z
+            );
+
+            // 将世界坐标转换为相对于 layer 的本地坐标
+            const localPosition = new Vector3();
+            layer.worldToLocal(localPosition.copy(worldSpritePosition));
 
             // 创建精灵组
             const spriteGroup = new Group();
@@ -213,7 +275,8 @@ class BuildingContext extends Context {
             });
             const blueSprite = new Sprite(blueSpriteMaterial);
             blueSprite.position.set(0, 0, 0); // 相对于组的原点
-            blueSprite.scale.set(30, 30, 1);
+            // 减小缩放，场景已经 scale 10 倍，所以精灵缩放相应调整
+            blueSprite.scale.set(3, 3, 1);
 
             // 2. 创建文字标签精灵
             const textTexture = this.createTextTexture(`${index + 1}号仓库`);
@@ -223,13 +286,14 @@ class BuildingContext extends Context {
                 alphaTest: 0.1
             });
             const textSprite = new Sprite(textSpriteMaterial);
-            textSprite.position.set(0, 25, 0); // Y 轴向上，在蓝色水滴上方
+            // 减小文字标签的位置偏移
+            textSprite.position.set(0, 2.5, 0); // Y 轴向上，在蓝色水滴上方
 
-            // 根据纹理的实际尺寸设置精灵大小
-            const textureSize = 1.5; // 进一步增大缩放比例
+            // 根据纹理的实际尺寸设置精灵大小（减小缩放）
+            const textureScale = 0.3; // 减小缩放比例
             textSprite.scale.set(
-                (textTexture.image.width * textureSize) / 5,
-                (textTexture.image.height * textureSize) / 5,
+                (textTexture.image.width * textureScale) / 10,
+                (textTexture.image.height * textureScale) / 10,
                 1
             );
 
@@ -237,24 +301,34 @@ class BuildingContext extends Context {
             spriteGroup.add(blueSprite);
             spriteGroup.add(textSprite);
 
-            // 设置组的位置（建筑顶部上方）- Y 轴向上
-            spriteGroup.position.set(
-                worldCenter.x,
-                worldCenter.y + worldSize.y / 2 + 25,
-                worldCenter.z
-            );
+            // 设置组的位置（相对于 layer 的本地坐标）
+            spriteGroup.position.copy(localPosition);
 
             // 存储动画数据
             spriteGroup.userData = {
                 originalY: spriteGroup.position.y,
                 floatRange: 10, // 浮动范围
                 speed: 1 + index * 0.3, // 每个标记不同的浮动速度
-                building: building // 存储关联的建筑，用于后续更新位置
+                building: building, // 存储关联的建筑，用于后续更新位置
+                layer: layer // 存储 layer，用于坐标转换
             };
 
-            // 添加到场景
-            this.scene.add(spriteGroup);
+            // 添加到 layer
+            layer.add(spriteGroup);
             this.spriteMarkers.push(spriteGroup);
+        }
+
+        this.data.layer1Selection.forEach((building, index) => {
+            createMarkerGroup(building, index, this.data.layer1);
+        });
+        
+        this.data.layer2Selection.forEach((building, index) => {
+            createMarkerGroup(building, index, this.data.layer2);
+        });
+
+
+        this.building.forEach((building, index) => {
+            createMarkerGroup(building, index, this.data.layer1);
         });
     }
 
@@ -262,10 +336,6 @@ class BuildingContext extends Context {
     createTextTexture(text: string): CanvasTexture {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-
-        if (!context) {
-            throw new Error('无法获取 canvas 2d context');
-        }
 
         // 设置更大的字体
         context.font = 'bold 40px Arial';
@@ -305,26 +375,36 @@ class BuildingContext extends Context {
         animationTime += 0.016; // 约60fps
 
         this.spriteMarkers.forEach((spriteGroup) => {
-            const { originalY, floatRange, speed, building } = spriteGroup.userData;
+            const { originalY, floatRange, speed, building, layer } = spriteGroup.userData;
 
-            // 更新建筑的世界矩阵
+            // 更新建筑和 layer 的世界矩阵
             building.updateMatrixWorld(true);
+            if (layer) {
+                layer.updateMatrixWorld(true);
+            }
 
             // 重新计算世界坐标下的包围盒
             const worldBox = new Box3().setFromObject(building);
             const worldCenter = worldBox.getCenter(new Vector3());
             const worldSize = worldBox.getSize(new Vector3());
 
-            // 更新精灵组的基础位置（跟随建筑）
-            // Y 轴向上，使用 Y 轴作为高度
+            // 计算精灵在世界坐标中的位置（建筑顶部上方 + 浮动动画）
             const baseY = worldCenter.y + worldSize.y / 2 + 25;
-
-            // 添加浮动动画效果
-            spriteGroup.position.set(
+            const worldSpritePosition = new Vector3(
                 worldCenter.x,
                 baseY + Math.sin(animationTime * speed) * floatRange,
                 worldCenter.z
             );
+
+            // 将世界坐标转换为相对于 layer 的本地坐标
+            if (layer) {
+                const localPosition = new Vector3();
+                layer.worldToLocal(localPosition.copy(worldSpritePosition));
+                spriteGroup.position.copy(localPosition);
+            } else {
+                // 如果没有 layer，直接使用世界坐标（向后兼容）
+                spriteGroup.position.copy(worldSpritePosition);
+            }
         });
     }
 

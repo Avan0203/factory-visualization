@@ -1,14 +1,13 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-10-21 10:53:49
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-11-26 01:00:33
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <template>
     <div style="width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-        <!-- 查询表单 -->
         <el-form :model="queryForm" inline
             style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
             <el-form-item label="" style="margin-right: 15px;">
@@ -20,39 +19,43 @@
                     value-format="YYYY-MM-DD" style="width: 160px;" />
             </el-form-item>
             <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.area" placeholder="选择区域" style="width: 120px;">
-                    <el-option label="东区" value="东区" />
-                    <el-option label="西区" value="西区" />
+                <el-select v-model="queryForm.warehouse" placeholder="选择仓库" style="width: 180px;" @change="handleWarehouseChange">
+                    <el-option 
+                        v-for="option in warehouseOptions" 
+                        :key="option.value" 
+                        :label="option.label" 
+                        :value="option.value" 
+                    />
                 </el-select>
             </el-form-item>
             <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.warehouse" placeholder="选择仓库" style="width: 130px;">
-                    <el-option label="全部" value="" />
-                    <el-option label="一号仓库" value="一号仓库" />
-                    <el-option label="二号仓库" value="二号仓库" />
-                    <el-option label="三号仓库" value="三号仓库" />
-                    <el-option label="四号仓库" value="四号仓库" />
-                    <el-option label="五号仓库" value="五号仓库" />
-                    <el-option label="六号仓库" value="六号仓库" />
+                <el-select v-model="queryForm.floor" placeholder="选择楼层" style="width: 120px;" @change="handleFloorChange">
+                    <el-option 
+                        v-for="option in floorOptions" 
+                        :key="option.value" 
+                        :label="option.label" 
+                        :value="option.value" 
+                    />
                 </el-select>
             </el-form-item>
             <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.floor" placeholder="选择楼层" style="width: 100px;">
-                    <el-option label="全部" value="" />
-                    <el-option label="一层" value="一层" />
-                    <el-option label="二层" value="二层" />
-                    <el-option label="三层" value="三层" />
-                    <el-option label="四层" value="四层" />
-                    <el-option label="五层" value="五层" />
+                <el-select v-model="queryForm.direction" placeholder="选择库位" style="width: 120px;" @change="handleDirectionChange">
+                    <el-option 
+                        v-for="option in directionOptions" 
+                        :key="option.value" 
+                        :label="option.label" 
+                        :value="option.value" 
+                    />
                 </el-select>
             </el-form-item>
             <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.location" placeholder="选择库位" style="width: 100px;">
-                    <el-option label="1" value="1" />
-                    <el-option label="2" value="2" />
-                    <el-option label="3" value="3" />
-                    <el-option label="4" value="4" />
-                    <el-option label="5" value="5" />
+                <el-select v-model="queryForm.location" placeholder="选择货位" style="width: 120px;">
+                    <el-option 
+                        v-for="option in locationOptions" 
+                        :key="option.value" 
+                        :label="option.label" 
+                        :value="option.value" 
+                    />
                 </el-select>
             </el-form-item>
             <el-form-item label="" style="margin-right: 15px;">
@@ -86,10 +89,12 @@
     </div>
 </template>
 <script setup>
-import { onMounted, onUnmounted, ref, nextTick } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick, computed, watch } from 'vue';
 import * as echarts from 'echarts';
 import { Refresh, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { getFactoryConfig, isConfigLoaded, setFactoryConfig } from '../../config/factoryConfig';
+import { getConfiguration, querySensorData } from '../../api/sensor';
 
 const chartRef = ref(null);
 let myChart = null;
@@ -128,12 +133,133 @@ const generateDateLabels = () => {
 const queryForm = ref({
     startDate: '',
     endDate: '',
-    warehouse: '',
-    floor: '',
-    area: '',
-    location: '',
+    warehouse: '', // 楼号（buildingCode）2
+    floor: '', // 楼层索引（0, 1, 2...）
+    direction: '', // 方向编码（01, 02）
+    location: '', // 货位号
     queryType: 'temperature'
 });
+
+// 获取配置数据（使用响应式 ref）
+const initialConfig = getFactoryConfig();
+const factoryConfig = ref(initialConfig);
+
+// 更新配置数据的函数
+const updateFactoryConfig = () => {
+    const config = getFactoryConfig();
+    if (config) {
+        factoryConfig.value = config;
+    }
+};
+
+// 监听 factoryConfig 的变化
+watch(factoryConfig, () => {
+    // 配置变化时自动触发 computed 重新计算
+}, { deep: true, immediate: true });
+
+// 方向编码转换为可读名称
+const getDirectionName = (directionCode, warehouseName) => {
+    // 确保 directionCode 是字符串
+    const code = String(directionCode).padStart(2, '0'); // 确保是两位数字符串，如 '01', '02'
+    
+    console.log('getDirectionName 调用:', { directionCode, code, warehouseName });
+    
+    if (warehouseName && warehouseName.includes('厂区原料仓库')) {
+        return code === '01' ? '南库' : code === '02' ? '北库' : code;
+    } else if (warehouseName && warehouseName.includes('苏山头')) {
+        return code === '01' ? '东库' : code === '02' ? '西库' : code;
+    }
+    
+    console.log('未匹配到仓库类型，返回原始编码:', code);
+    return code;
+};
+
+// 仓库选项（楼号）
+const warehouseOptions = computed(() => {
+    const config = factoryConfig.value;
+    if (!config || !config.statistics) {
+        return [];
+    }
+    
+    return Object.entries(config.statistics).map(([buildingCode, buildingData]) => ({
+        label: buildingData.name,
+        value: buildingCode
+    }));
+});
+
+// 楼层选项
+const floorOptions = computed(() => {
+    const config = factoryConfig.value;
+    if (!config || !config.statistics || !queryForm.value.warehouse) return [];
+    
+    const buildingData = config.statistics[queryForm.value.warehouse];
+    if (!buildingData || !buildingData.floors) return [];
+    
+    return buildingData.floors.map((_, index) => ({
+        label: `第${index + 1}层`,
+        value: String(index)
+    }));
+});
+
+// 库位（方向）选项
+const directionOptions = computed(() => {
+    const config = factoryConfig.value;
+    if (!config || !config.statistics || !queryForm.value.warehouse || queryForm.value.floor === '') return [];
+    
+    const buildingData = config.statistics[queryForm.value.warehouse];
+    if (!buildingData || !buildingData.floors) return [];
+    
+    const floorIndex = parseInt(queryForm.value.floor);
+    const floorData = buildingData.floors[floorIndex];
+    if (!floorData) return [];
+    
+    return Object.keys(floorData).map(directionCode => {
+        // 确保 directionCode 是字符串格式
+        const codeStr = String(directionCode);
+        const name = getDirectionName(codeStr, buildingData.name);
+        console.log('方向转换:', { directionCode, codeStr, warehouseName: buildingData.name, name });
+        return {
+            label: name,
+            value: codeStr
+        };
+    });
+});
+
+// 货位号选项
+const locationOptions = computed(() => {
+    const config = factoryConfig.value;
+    if (!config || !config.statistics || !queryForm.value.warehouse || queryForm.value.floor === '' || !queryForm.value.direction) return [];
+    
+    const buildingData = config.statistics[queryForm.value.warehouse];
+    if (!buildingData || !buildingData.floors) return [];
+    
+    const floorIndex = parseInt(queryForm.value.floor);
+    const floorData = buildingData.floors[floorIndex];
+    if (!floorData || !floorData[queryForm.value.direction]) return [];
+    
+    return floorData[queryForm.value.direction].map(position => ({
+        label: `${position}号`,
+        value: String(position)
+    })).sort((a, b) => parseInt(a.value) - parseInt(b.value));
+});
+
+// 仓库变化时，清空楼层、方向、货位
+const handleWarehouseChange = () => {
+    queryForm.value.floor = '';
+    queryForm.value.direction = '';
+    queryForm.value.location = '';
+};
+
+// 楼层变化时，清空方向、货位
+const handleFloorChange = () => {
+    queryForm.value.direction = '';
+    queryForm.value.location = '';
+};
+
+// 方向变化时，清空货位
+const handleDirectionChange = () => {
+    queryForm.value.location = '';
+};
 
 // 标签数据
 const tags = ref([]);
@@ -226,16 +352,78 @@ const generateRandomData = (count = 31) => {
     return data;
 };
 
+// 将日期转换为 YYYY-MM-DD 格式
+const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// 将数据按日期映射到日期标签数组
+const mapDataToDateLabels = (data, queryType) => {
+    // 生成日期范围对应的日期字符串数组
+    const today = new Date();
+    const dateStrings = [];
+    for (let i = -15; i <= 15; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        dateStrings.push(formatDate(date));
+    }
+
+    // 创建日期到数据的映射
+    const dataMap = new Map();
+    data.forEach(item => {
+        const recordDate = new Date(item.recordtime);
+        const dateStr = formatDate(recordDate);
+        const value = queryType === 'temperature' ? item.temperature : item.humidity;
+        
+        if (!dataMap.has(dateStr)) {
+            dataMap.set(dateStr, []);
+        }
+        const values = dataMap.get(dateStr);
+        values.push(value);
+    });
+
+    // 将数据映射到日期标签数组（如果某天有多条数据，取平均值）
+    const mappedData = [];
+    dateStrings.forEach(dateStr => {
+        const values = dataMap.get(dateStr);
+        if (values && values.length > 0) {
+            // 计算平均值
+            const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+            mappedData.push(Number(avg.toFixed(1)));
+        } else {
+            // 没有数据时使用 null（echarts 会跳过）
+            mappedData.push(null);
+        }
+    });
+
+    return mappedData;
+};
+
 // 添加方法
-const handleAdd = () => {
+const handleAdd = async () => {
     // 验证必选字段
-    if (!queryForm.value.area || !queryForm.value.warehouse || !queryForm.value.location || !queryForm.value.queryType) {
-        ElMessage.warning('请选择必要选项：地区、库名、库位、查询项');
+    if (!queryForm.value.warehouse || !queryForm.value.floor || !queryForm.value.direction || !queryForm.value.location || !queryForm.value.queryType) {
+        ElMessage.warning('请选择必要选项：仓库、楼层、库位、货位、查询项');
         return;
     }
 
+    // 获取仓库名称和方向名称
+    const config = factoryConfig.value;
+    if (!config || !config.statistics || !config.statistics[queryForm.value.warehouse]) {
+        ElMessage.warning('配置数据不存在');
+        return;
+    }
+    
+    const buildingData = config.statistics[queryForm.value.warehouse];
+    const floorIndex = parseInt(queryForm.value.floor);
+    const directionName = getDirectionName(queryForm.value.direction, buildingData.name);
+    const floorName = `第${floorIndex + 1}层`;
+    
     // 生成标签名称
-    const tagName = `${queryForm.value.area}${queryForm.value.warehouse}${queryForm.value.floor}${queryForm.value.location}位`;
+    const tagName = `${buildingData.name}${floorName}${directionName}${queryForm.value.location}号位`;
     
     // 检查是否已存在相同的标签
     const existingTag = tags.value.find(tag => tag.name === tagName);
@@ -244,52 +432,78 @@ const handleAdd = () => {
         return;
     }
 
-    // 生成随机数据
-    const randomData = generateRandomData();
-    
-    // 创建新的标签
-    const newTag = {
-        id: Date.now(),
-        name: tagName,
-        type: 'primary',
-        data: randomData,
-        queryType: queryForm.value.queryType
-    };
+    try {
+        // 调用接口查询数据
+        const queryParams = {
+            warehouse: queryForm.value.warehouse,
+            floor: floorIndex,
+            direction: queryForm.value.direction,
+            location: queryForm.value.location,
+            startDate: queryForm.value.startDate || undefined,
+            endDate: queryForm.value.endDate || undefined,
+            queryType: queryForm.value.queryType
+        };
 
-    // 添加到标签列表
-    tags.value.push(newTag);
+        const sensorData = await querySensorData(queryParams);
 
-    // 创建图表系列数据
-    const symbolTypes = ['circle', 'rect', 'diamond', 'triangle', 'pin', 'arrow', 'roundRect', 'star'];
-    const symbolType = symbolTypes[chartData.value.series.length % symbolTypes.length];
-    
-    const newSeries = {
-        name: tagName,
-        type: 'line',
-        symbol: symbolType,
-        symbolSize: 6,
-        smooth: true,
-        data: randomData
-    };
+        // 将数据映射到日期标签数组
+        const chartDataArray = mapDataToDateLabels(sensorData, queryForm.value.queryType);
 
-    // 添加到图表数据
-    chartData.value.series.push(newSeries);
+        // 检查是否有数据
+        const hasData = chartDataArray.some(val => val !== null && val !== undefined);
+        if (!hasData) {
+            ElMessage.warning('查询时间段内无数据');
+            return;
+        }
 
-    // 更新图表
-    updateChartData();
+        // 创建新的标签
+        const newTag = {
+            id: Date.now(),
+            name: tagName,
+            type: 'primary',
+            data: chartDataArray,
+            queryType: queryForm.value.queryType
+        };
 
-    // 清空表单
-    queryForm.value = {
-        startDate: '',
-        endDate: '',
-        warehouse: '',
-        floor: '',
-        area: '',
-        location: '',
-        queryType: 'temperature'
-    };
+        // 添加到标签列表
+        tags.value.push(newTag);
 
-    ElMessage.success('添加成功');
+        // 创建图表系列数据
+        const symbolTypes = ['circle', 'rect', 'diamond', 'triangle', 'pin', 'arrow', 'roundRect', 'star'];
+        const symbolType = symbolTypes[chartData.value.series.length % symbolTypes.length];
+        
+        const newSeries = {
+            name: tagName,
+            type: 'line',
+            symbol: symbolType,
+            symbolSize: 6,
+            smooth: true,
+            data: chartDataArray
+        };
+
+        // 添加到图表数据
+        chartData.value.series.push(newSeries);
+
+        // 更新图表
+        updateChartData();
+
+        // 清空表单
+        queryForm.value = {
+            startDate: '',
+            endDate: '',
+            warehouse: '',
+            floor: '',
+            direction: '',
+            location: '',
+            queryType: 'temperature'
+        };
+
+        ElMessage.success('添加成功');
+    } catch (error) {
+        // 查询失败时不阻塞页面，只显示错误提示
+        console.error('查询数据失败:', error);
+        ElMessage.error('查询数据失败，请稍后重试');
+    }
 };
 
 // 标签删除方法
@@ -298,14 +512,12 @@ const handleTagClose = (tag) => {
     const tagIndex = tags.value.findIndex(t => t.id === tag.id);
     if (tagIndex > -1) {
         tags.value.splice(tagIndex, 1);
-        console.log('标签已从列表中移除');
     }
 
     // 从图表数据中移除对应的系列
     const seriesIndex = chartData.value.series.findIndex(s => s.name === tag.name);
     if (seriesIndex > -1) {
         chartData.value.series.splice(seriesIndex, 1);
-        console.log('系列已从图表数据中移除');
     }
     // 更新图表
     updateChartData();
@@ -320,7 +532,7 @@ const handleReset = () => {
         endDate: '',
         warehouse: '',
         floor: '',
-        area: '',
+        direction: '',
         location: '',
         queryType: 'temperature'
     };
@@ -379,8 +591,25 @@ const updateChartData = () => {
         series: chartData.value.series
     };
 
-    console.log('设置图表选项，系列数量:', option.series.length);
     myChart.setOption(option, true); // 使用true强制重新渲染
+};
+
+// 加载配置数据的函数
+const loadConfiguration = async () => {
+    try {
+        const config = await getConfiguration();
+        
+        // 存储到全局配置
+        setFactoryConfig(config);
+        
+        // 更新本地响应式配置
+        factoryConfig.value = config;
+        
+        return true;
+    } catch (error) {
+        ElMessage.error('加载配置信息失败，请检查后端服务是否正常运行');
+        return false;
+    }
 };
 
 // 组件挂载时初始化图表
@@ -390,8 +619,35 @@ onMounted(async () => {
     queryForm.value.startDate = dateRange.start;
     queryForm.value.endDate = dateRange.end;
     
+    // 如果配置已加载，更新配置数据
+    if (isConfigLoaded()) {
+        updateFactoryConfig();
+    } else {
+        // 如果配置还未加载，主动加载配置
+        const loaded = await loadConfiguration();
+        
+        if (!loaded) {
+            // 如果主动加载失败，尝试轮询检查（可能 App.vue 正在加载）
+            const checkConfig = setInterval(() => {
+                if (isConfigLoaded()) {
+                    updateFactoryConfig();
+                    clearInterval(checkConfig);
+                }
+            }, 200);
+            
+            // 10秒后停止检查
+            setTimeout(() => {
+                clearInterval(checkConfig);
+            }, 10000);
+        }
+    }
+    
     // 等待DOM更新完成
     await nextTick();
+    
+    // 再次检查配置
+    updateFactoryConfig();
+    
     // 延迟一点时间确保容器尺寸正确
     setTimeout(() => {
         initChart();

@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-26 17:48:28
+ * @LastEditTime: 2025-11-27 10:16:49
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -71,12 +71,12 @@
     </div>
 </template>
 <script setup>
-import { onMounted, onUnmounted, ref, nextTick, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { Refresh, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { getFactoryConfig, isConfigLoaded, setFactoryConfig } from '../../config/factoryConfig';
-import { getConfiguration, querySensorData } from '../../api/sensor';
+import { querySensorData } from '../../api/sensor';
+import { warehouseConfig } from '../../config';
 
 const chartRef = ref(null);
 let myChart = null;
@@ -121,23 +121,6 @@ const queryForm = ref({
     location: '', // 货位号
     queryType: 'temperature'
 });
-
-// 获取配置数据（使用响应式 ref）
-const initialConfig = getFactoryConfig();
-const factoryConfig = ref(initialConfig);
-
-// 更新配置数据的函数
-const updateFactoryConfig = () => {
-    const config = getFactoryConfig();
-    if (config) {
-        factoryConfig.value = config;
-    }
-};
-
-// 监听 factoryConfig 的变化
-watch(factoryConfig, () => {
-    // 配置变化时自动触发 computed 重新计算
-}, { deep: true, immediate: true });
 
 // 方向编码转换为可读名称
 const getDirectionName = (directionCode, warehouseName) => {
@@ -214,7 +197,12 @@ const floorOptions = [
 
 
 // 货位号选项
-const locationOptions = []
+const locationOptions = Array.from({ length: 15 }, (_, index) => ({
+  label: `${index + 1}号位`,
+  value: (index + 1).toString().padStart(2, '0')
+}));
+
+console.log(locationOptions);
 
 // 仓库变化时，清空楼层、方向、货位
 const handleWarehouseChange = () => {
@@ -313,16 +301,6 @@ const handleResize = () => {
     if (myChart) {
         myChart.resize();
     }
-};
-
-// 生成随机数据
-const generateRandomData = (count = 31) => {
-    const data = [];
-    for (let i = 0; i < count; i++) {
-        // 生成18-32之间的随机温度数据
-        data.push(Number((18 + Math.random() * 14).toFixed(1)));
-    }
-    return data;
 };
 
 // 将日期转换为 YYYY-MM-DD 格式
@@ -567,23 +545,6 @@ const updateChartData = () => {
     myChart.setOption(option, true); // 使用true强制重新渲染
 };
 
-// 加载配置数据的函数
-const loadConfiguration = async () => {
-    try {
-        const config = await getConfiguration();
-
-        // 存储到全局配置
-        setFactoryConfig(config);
-
-        // 更新本地响应式配置
-        factoryConfig.value = config;
-
-        return true;
-    } catch (error) {
-        ElMessage.error('加载配置信息失败，请检查后端服务是否正常运行');
-        return false;
-    }
-};
 
 // 组件挂载时初始化图表
 onMounted(async () => {
@@ -592,34 +553,8 @@ onMounted(async () => {
     queryForm.value.startDate = dateRange.start;
     queryForm.value.endDate = dateRange.end;
 
-    // 如果配置已加载，更新配置数据
-    if (isConfigLoaded()) {
-        updateFactoryConfig();
-    } else {
-        // 如果配置还未加载，主动加载配置
-        const loaded = await loadConfiguration();
-
-        if (!loaded) {
-            // 如果主动加载失败，尝试轮询检查（可能 App.vue 正在加载）
-            const checkConfig = setInterval(() => {
-                if (isConfigLoaded()) {
-                    updateFactoryConfig();
-                    clearInterval(checkConfig);
-                }
-            }, 200);
-
-            // 10秒后停止检查
-            setTimeout(() => {
-                clearInterval(checkConfig);
-            }, 10000);
-        }
-    }
-
     // 等待DOM更新完成
     await nextTick();
-
-    // 再次检查配置
-    updateFactoryConfig();
 
     // 延迟一点时间确保容器尺寸正确
     setTimeout(() => {

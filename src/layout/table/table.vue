@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:33
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-24 01:09:48
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-11-27 10:19:28
  * @FilePath: /factory-visualization/src/layout/table.vue
  * @Description: 报表统计页面
 -->
@@ -106,7 +106,6 @@
 
     <!-- 数据表格 -->
     <div class="table-wrapper">
-      <div class="table-title">列表</div>
       <el-table
         :data="tableData"
         border
@@ -119,12 +118,12 @@
         
         <!-- 天气列组 -->
         <el-table-column label="天气" align="center">
-          <el-table-column prop="weatherTemp" label="温度" min-width="100" align="center">
+          <el-table-column prop="weatherTemp" label="温度" min-width="80" align="center">
             <template #default="{ row }">
               {{ row.weatherTemp !== null && row.weatherTemp !== undefined ? `${row.weatherTemp}°C` : '-' }}
             </template>
           </el-table-column>
-          <el-table-column prop="weatherHumidity" label="湿度" min-width="100" align="center">
+          <el-table-column prop="weatherHumidity" label="湿度" min-width="80" align="center">
             <template #default="{ row }">
               {{ row.weatherHumidity !== null && row.weatherHumidity !== undefined ? `${row.weatherHumidity}%` : '-' }}
             </template>

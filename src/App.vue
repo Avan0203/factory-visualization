@@ -17,7 +17,6 @@ import { onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import Layout from './layout/index.vue';
 import { getConfiguration } from './api/sensor';
-import { setFactoryConfig } from './config/factoryConfig';
 
 // 应用启动时调用配置接口
 onMounted(async () => {
@@ -25,7 +24,6 @@ onMounted(async () => {
     const config = await getConfiguration();
     console.log('配置信息加载成功:', config);
     // 存储到全局配置
-    setFactoryConfig(config);
   } catch (error) {
     console.error('加载配置信息失败:', error);
     ElMessage.error('加载配置信息失败，请检查后端服务是否正常运行');

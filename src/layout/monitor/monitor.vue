@@ -1,17 +1,21 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-17 01:01:46
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-23 18:52:24
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-11-27 16:20:04
  * @FilePath: /factory-visualization/src/layout/monitor/monitor.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <template>
     <div style="width: 100%; height: 100%; position: relative; overflow: hidden;" ref="containerRef">
-        <el-select v-model="path" placeholder="请选择厂区" style="width: 240px;position: absolute;top: 10px;left: 10px;"
-            @change="pathChange">
-            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
+        <div style="position: absolute;top: 10px;left: 10px;">
+            <el-select v-if="isBuildingContext" v-model="path" placeholder="请选择厂区" style="width: 240px;"
+                @change="pathChange">
+                <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+            <el-button type="primary" @click="backToBuilding" v-else>返回</el-button>
+        </div>
+
         <div v-if="showBuildingInfo" class="building-info">
             <ul class="building-info-content" @click="panelClick">
                 <li id="1">第一层</li>
@@ -35,6 +39,7 @@ const containerRef = ref<HTMLElement | null>(null);
 let render: Render;
 let warehouseContext: WarehouseContext;
 let buildingContext: BuildingContext;
+let isBuildingContext = ref<boolean>(true);
 
 const options = [
     {
@@ -56,6 +61,12 @@ const pathChange = (value: 0 | 1) => {
     buildingContext.switchLayer(value);
 }
 
+const backToBuilding = () => {
+    render.switchContext(buildingContext);
+    showBuildingInfo.value = false;
+    isBuildingContext.value = true;
+}
+
 
 onMounted(() => {
     if (containerRef.value) {
@@ -67,6 +78,7 @@ onMounted(() => {
         buildingContext = new BuildingContext(render.renderer);
         // 切换到 WarehouseContext
         render.switchContext(buildingContext);
+        isBuildingContext.value = true;
 
         render.on('select', (object: Mesh) => {
             if (object.name.includes('goods')) {
@@ -99,6 +111,7 @@ const panelClick = (e: MouseEvent) => {
     render.switchContext(warehouseContext);
     e.stopPropagation();
     showBuildingInfo.value = false;
+    isBuildingContext.value = false;
 }
 
 onBeforeUnmount(() => {

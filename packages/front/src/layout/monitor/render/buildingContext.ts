@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-23 19:02:41
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-11-28 14:37:11
  * @FilePath: /factory-visualization/src/layout/monitor/buildingContext.ts
  * @Description: BuildingContext - 建筑场景上下文
  */
@@ -29,6 +29,7 @@ import {
 import { Context } from './context';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { publicPath, gltfLoader, textureLoader, rgbeloader } from '../../../shard';
+import { buildingNameConfig } from '../../../config';
 
 let animationTime = 0;
 
@@ -151,9 +152,11 @@ class BuildingContext extends Context {
                 if (child.name.includes('building')) {
                     if (this.data.layer1 === child.parent) {
                         this.data.layer1Selection.push(child);
+                        child.userData = buildingNameConfig[child.name];
                     }
                     if (this.data.layer2 === child.parent) {
                         this.data.layer2Selection.push(child);
+                        child.userData = buildingNameConfig[child.name];
                     }
                 }
 
@@ -279,7 +282,7 @@ class BuildingContext extends Context {
             blueSprite.scale.set(3, 3, 1);
 
             // 2. 创建文字标签精灵
-            const textTexture = this.createTextTexture(`${index + 1}号仓库`);
+            const textTexture = this.createTextTexture(building.userData.name);
             const textSpriteMaterial = new SpriteMaterial({
                 map: textTexture,
                 transparent: true,
@@ -375,7 +378,7 @@ class BuildingContext extends Context {
         animationTime += 0.016; // 约60fps
 
         this.spriteMarkers.forEach((spriteGroup) => {
-            const { originalY, floatRange, speed, building, layer } = spriteGroup.userData;
+            const { floatRange, speed, building, layer } = spriteGroup.userData;
 
             // 更新建筑和 layer 的世界矩阵
             building.updateMatrixWorld(true);

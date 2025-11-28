@@ -13,7 +13,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "include": ["packages/front/src/**/*.ts", "packages/front/src/**/*.d.ts", "packages/front/src/**/*.tsx", "packages/front/src/**/*.vue","packages/backend/src/**/*.ts", "packages/backend/src/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
 

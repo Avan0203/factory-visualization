@@ -33,15 +33,15 @@ jobs:
     - name: Install dependencies
       run: pnpm install
       
-    - name: Build
-      run: pnpm build
+    - name: Build frontend
+      run: pnpm --filter front build
       env:
         NODE_ENV: production
         
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: ./dist
+        path: ./packages/front/dist
 
   deploy:
     environment:

@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-27 10:16:49
+ * @LastEditTime: 2025-11-28 15:23:43
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -10,45 +10,47 @@
     <div style="width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
         <el-form :model="queryForm" inline
             style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-date-picker v-model="queryForm.startDate" type="date" placeholder="选择起始日期" format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD" style="width: 160px;" />
+            <el-form-item label="">
+                <el-date-picker v-model="queryForm.dataRange" type="daterange" range-separator="至"
+                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;"/>
             </el-form-item>
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-date-picker v-model="queryForm.endDate" type="date" placeholder="选择结束日期" format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD" style="width: 160px;" />
-            </el-form-item>
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.warehouse" placeholder="选择仓库" style="width: 180px;"
+            <el-form-item label="" style="margin-right: 10px;">
+                <el-select v-model="queryForm.warehouse" placeholder="仓库" style="width: 170px;"
                     @change="handleWarehouseChange">
                     <el-option v-for="option in warehouseOptions" :key="option.value" :label="option.label"
                         :value="option.value" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.floor" placeholder="选择楼层" style="width: 120px;"
+            <el-form-item label="" style="margin-right: 10px;">
+                <el-select v-model="queryForm.floor" placeholder="楼层" style="width: 100px;"
                     @change="handleFloorChange">
                     <el-option v-for="option in floorOptions" :key="option.value" :label="option.label"
                         :value="option.value" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.direction" placeholder="选择库位" style="width: 120px;"
+            <el-form-item label="" style="margin-right: 10px;">
+                <el-select v-model="queryForm.direction" placeholder="库位" style="width: 80px;"
                     @change="handleDirectionChange">
                     <el-option v-for="option in directionOptions" :key="option.value" :label="option.label"
                         :value="option.value" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.location" placeholder="选择货位" style="width: 120px;">
+            <el-form-item label="" style="margin-right: 10px;">
+                <el-select v-model="queryForm.location" placeholder="货位" style="width: 100px;">
                     <el-option v-for="option in locationOptions" :key="option.value" :label="option.label"
                         :value="option.value" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="" style="margin-right: 15px;">
-                <el-select v-model="queryForm.queryType" placeholder="选择查询项" style="width: 100px;">
+            <el-form-item label="" style="margin-right: 10px;">
+                <el-select v-model="queryForm.queryType" placeholder="查询项" style="width: 80px;">
                     <el-option label="温度" value="temperature" />
                     <el-option label="湿度" value="humidity" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" style="margin-right: 10px;">
+                <el-select v-model="queryForm.sensorType" placeholder="传感器类型" style="width: 130px;">
+                    <el-option label="环境传感器" value="1" />
+                    <el-option label="包芯传感器" value="2" />
                 </el-select>
             </el-form-item>
             <el-form-item style="margin-right: 0;">
@@ -70,14 +72,13 @@
         <div ref="chartRef" style="flex: 1; width: 100%; min-height: 0;"></div>
     </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { Refresh, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { querySensorData } from '../../api/sensor';
-import { warehouseConfig } from '../../config';
-
+import { warehouseOptions, floorOptions, dir1Options, dir2Options, locationOptions, buildingNameConfig } from '../../config';
 const chartRef = ref(null);
 let myChart = null;
 
@@ -95,6 +96,7 @@ const generateDateRange = () => {
     };
 };
 
+// TODO 根据日期范围生成日期标签
 // 生成日期标签
 const generateDateLabels = () => {
     const today = new Date();
@@ -113,108 +115,41 @@ const generateDateLabels = () => {
 
 // 查询表单数据
 const queryForm = ref({
-    startDate: '',
-    endDate: '',
+    dataRange: [],
     warehouse: '', // 楼号（buildingCode）2
     floor: '', // 楼层索引（0, 1, 2...）
     direction: '', // 方向编码（01, 02）
     location: '', // 货位号
-    queryType: 'temperature'
+    queryType: 'temperature',
+    sensorType: '1'
 });
 
 // 方向编码转换为可读名称
-const getDirectionName = (directionCode, warehouseName) => {
-    // 确保 directionCode 是字符串
-    const code = String(directionCode).padStart(2, '0'); // 确保是两位数字符串，如 '01', '02'
-
-    console.log('getDirectionName 调用:', { directionCode, code, warehouseName });
-
-    if (warehouseName && warehouseName.includes('厂区原料仓库')) {
-        return code === '01' ? '南库' : code === '02' ? '北库' : code;
-    } else if (warehouseName && warehouseName.includes('苏山头')) {
-        return code === '01' ? '东库' : code === '02' ? '西库' : code;
+const getDirectionName = (directionCode: string, buildingCode: string) => {
+    if (Number(buildingCode) < 46) {
+        return directionCode === '01' ? '东库' : '西库';
+    } else {
+        return directionCode === '01' ? '南库' : '北库';
     }
-
-    console.log('未匹配到仓库类型，返回原始编码:', code);
-    return code;
 };
-
-// 仓库选项（楼号）
-const warehouseOptions = Object.entries(warehouseConfig).map(([key, value]) => ({
-    label: value.name,
-    value: key
-}));
-
-const dir1Options = [
-    {
-        label: '东库',
-        value: '01'
-    },
-    {
-        label: '西库',
-        value: '02'
-    }
-]
-const dir2Options = [
-    {
-        label: '南库',
-        value: '01'
-    },
-    {
-        label: '北库',
-        value: '02'
-    }
-]
 
 // 库位（方向）选项
 const directionOptions = computed(() => {
     return +queryForm.value.warehouse < 46 ? dir1Options : dir2Options;
 })
 
-// 楼层选项
-const floorOptions = [
-    {
-        label: '第1层',
-        value: '01'
-    },
-    {
-        label: '第2层',
-        value: '02'
-    },
-    {
-        label: '第3层',
-        value: '03'
-    },
-    {
-        label: '第4层',
-        value: '04'
-    },
-    {
-        label: '第5层',
-        value: '05'
-    }
-]
-
-
-// 货位号选项
-const locationOptions = Array.from({ length: 15 }, (_, index) => ({
-  label: `${index + 1}号位`,
-  value: (index + 1).toString().padStart(2, '0')
-}));
-
 console.log(locationOptions);
 
 // 仓库变化时，清空楼层、方向、货位
 const handleWarehouseChange = () => {
     queryForm.value.floor = '';
-    queryForm.value.direction = '';
-    queryForm.value.location = '';
+    handleFloorChange();
 };
 
 // 楼层变化时，清空方向、货位
 const handleFloorChange = () => {
     queryForm.value.direction = '';
-    queryForm.value.location = '';
+    handleDirectionChange();
 };
 
 // 方向变化时，清空货位
@@ -361,20 +296,17 @@ const handleAdd = async () => {
         return;
     }
 
-    // 获取仓库名称和方向名称
-    const config = factoryConfig.value;
-    if (!config || !config.statistics || !config.statistics[queryForm.value.warehouse]) {
-        ElMessage.warning('配置数据不存在');
-        return;
-    }
+    const buildingData = queryForm.value.warehouse;
 
-    const buildingData = config.statistics[queryForm.value.warehouse];
+    const buildingName = Object.values(buildingNameConfig).find(item => item.code === buildingData)?.name || '';
+
     const floorIndex = parseInt(queryForm.value.floor);
-    const directionName = getDirectionName(queryForm.value.direction, buildingData.name);
     const floorName = `第${floorIndex + 1}层`;
 
+    const directionName = getDirectionName(queryForm.value.direction, buildingName);
+
     // 生成标签名称
-    const tagName = `${buildingData.name}${floorName}${directionName}${queryForm.value.location}号位`;
+    const tagName = `${buildingName}${floorName}${directionName}${+queryForm.value.location}号位`;
 
     // 检查是否已存在相同的标签
     const existingTag = tags.value.find(tag => tag.name === tagName);
@@ -390,9 +322,8 @@ const handleAdd = async () => {
             floor: floorIndex,
             direction: queryForm.value.direction,
             location: queryForm.value.location,
-            startDate: queryForm.value.startDate || undefined,
-            endDate: queryForm.value.endDate || undefined,
-            queryType: queryForm.value.queryType
+            dataRange: queryForm.value.dataRange,
+            queryType: queryForm.value.queryType as 'temperature' | 'humidity'
         };
 
         const sensorData = await querySensorData(queryParams);
@@ -440,13 +371,13 @@ const handleAdd = async () => {
 
         // 清空表单
         queryForm.value = {
-            startDate: '',
-            endDate: '',
+            dataRange: queryForm.value.dataRange,
             warehouse: '',
             floor: '',
             direction: '',
             location: '',
-            queryType: 'temperature'
+            queryType: 'temperature',
+            sensorType: '1'
         };
 
         ElMessage.success('添加成功');
@@ -479,13 +410,13 @@ const handleTagClose = (tag) => {
 // 清空方法
 const handleReset = () => {
     queryForm.value = {
-        startDate: '',
-        endDate: '',
+        dataRange: [],
         warehouse: '',
         floor: '',
         direction: '',
         location: '',
-        queryType: 'temperature'
+        queryType: 'temperature',
+        sensorType: '1'
     };
 };
 
@@ -550,8 +481,7 @@ const updateChartData = () => {
 onMounted(async () => {
     // 设置默认日期范围
     const dateRange = generateDateRange();
-    queryForm.value.startDate = dateRange.start;
-    queryForm.value.endDate = dateRange.end;
+    queryForm.value.dataRange = [dateRange.start, dateRange.end];
 
     // 等待DOM更新完成
     await nextTick();

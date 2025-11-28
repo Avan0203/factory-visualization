@@ -2,7 +2,7 @@
  * @Author: wuyifan wuyifan@udschina.com
  * @Date: 2025-11-26 16:30:26
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-28 14:36:34
+ * @LastEditTime: 2025-11-28 15:27:14
  * @FilePath: \factory-visualization\src\config\inedex.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -46,7 +46,7 @@ export const warehouseConfig = {
 }
 
 export const buildingNameConfig = {
-    'building4': { name : '1号仓库', code: '01' },
+    'building4': { name: '1号仓库', code: '01' },
     "building2": { name: '2号仓库', code: '02' },
     "building1": { name: '3号仓库', code: '03' },
     "building3": { name: '4号仓库', code: '04' },
@@ -59,3 +59,66 @@ export const buildingNameConfig = {
     "building9": { name: '3号仓库', code: '48' },
     "building10": { name: '4号仓库', code: '49' },
 }
+
+export const dir1Options = [
+    {
+        label: '东库',
+        value: '01'
+    },
+    {
+        label: '西库',
+        value: '02'
+    }
+]
+export const dir2Options = [
+    {
+        label: '南库',
+        value: '01'
+    },
+    {
+        label: '北库',
+        value: '02'
+    }
+]
+
+// 楼层选项
+export const floorOptions = [
+    {
+        label: '第1层',
+        value: '01'
+    },
+    {
+        label: '第2层',
+        value: '02'
+    },
+    {
+        label: '第3层',
+        value: '03'
+    },
+    {
+        label: '第4层',
+        value: '04'
+    },
+    {
+        label: '第5层',
+        value: '05'
+    }
+]
+
+
+// 货位号选项
+export const locationOptions = Array.from({ length: 15 }, (_, index) => ({
+    label: `${index + 1}号位`,
+    value: (index + 1).toString().padStart(2, '0')
+}));
+
+// 仓库选项（楼号）
+export const warehouseOptions = Object.entries(warehouseConfig).map(([key, value]) => ({
+    label: value.name,
+    value: key
+}));
+
+export const timeOptions = Array.from({ length: 24 }, (_, i) => ({
+    value: i,
+    label: `${i}点`
+}))

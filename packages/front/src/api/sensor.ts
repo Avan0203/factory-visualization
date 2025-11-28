@@ -73,8 +73,7 @@ export interface QuerySensorDataParams {
   floor: number;            // 楼层索引（0开始）
   direction: string;        // 方向编码（01/02）
   location: string;         // 货位号
-  startDate?: string;       // 起始日期 YYYY-MM-DD
-  endDate?: string;         // 结束日期 YYYY-MM-DD
+  dataRange?: string[];     // 日期范围 [开始日期, 结束日期]
   queryType?: 'temperature' | 'humidity';  // 查询类型
 }
 
@@ -82,7 +81,7 @@ export interface QuerySensorDataParams {
  * 查询传感器数据
  */
 export const querySensorData = async (params: QuerySensorDataParams): Promise<SensorDataItem[]> => {
-  const { warehouse, floor, direction, location, startDate, endDate, queryType } = params;
+  const { warehouse, floor, direction, location, dataRange, queryType } = params;
   
   const queryParams: Record<string, string> = {
     warehouse,
@@ -91,11 +90,8 @@ export const querySensorData = async (params: QuerySensorDataParams): Promise<Se
     location
   };
   
-  if (startDate) {
-    queryParams.startDate = startDate;
-  }
-  if (endDate) {
-    queryParams.endDate = endDate;
+  if (dataRange) {
+    queryParams.dataRange = dataRange.join(',');
   }
   if (queryType) {
     queryParams.queryType = queryType;

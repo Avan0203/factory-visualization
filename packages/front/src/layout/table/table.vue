@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:33
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-27 10:19:28
+ * @LastEditTime: 2025-11-28 15:34:50
  * @FilePath: /factory-visualization/src/layout/table.vue
  * @Description: 报表统计页面
 -->
@@ -11,84 +11,42 @@
     <!-- 查询条件区域 -->
     <div class="query-panel">
       <el-form :inline="true" :model="queryForm" class="query-form">
-        <el-form-item label="开始日期" :width="150">
-          <el-date-picker
-            v-model="queryForm.startDate"
-            type="date"
-            placeholder="选择开始日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            class="form-item-input"
-          />
+        <el-form-item label="">
+          <el-date-picker v-model="queryForm.dataRange" type="daterange" range-separator="至" start-placeholder="开始日期"
+            end-placeholder="结束日期" style="width: 220px;" />
         </el-form-item>
-        <el-form-item label="结束日期">
-          <el-date-picker
-            v-model="queryForm.endDate"
-            type="date"
-            placeholder="选择结束日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            class="form-item-input"
-          />
-        </el-form-item>
-        <el-form-item label="时间">
-          <el-select
-            v-model="queryForm.time"
-            placeholder="选择时间"
-            class="form-item-input"
-            clearable
-          >
-            <el-option
-              v-for="hour in timeOptions"
-              :key="hour.value"
-              :label="hour.label"
-              :value="hour.value"
-            />
+        <el-form-item label="">
+          <el-select v-model="queryForm.time" placeholder="时间" class="form-item-input" clearable style="width: 100px;">
+            <el-option v-for="hour in timeOptions" :key="hour.value" :label="hour.label" :value="hour.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="仓库">
-          <el-select
-            v-model="queryForm.warehouse"
-            placeholder="仓库"
-            class="form-item-input"
-            clearable
-          >
-            <el-option
-              v-for="item in warehouseOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+        <el-form-item label="">
+          <el-select v-model="queryForm.warehouse" placeholder="仓库" class="form-item-input" clearable>
+            <el-option v-for="item in warehouseOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="选择储区">
-          <el-select
-            v-model="queryForm.storageArea"
-            placeholder="储区"
-            class="form-item-input"
-            clearable
-          >
-            <el-option
-              v-for="item in storageAreaOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+        <el-form-item label="" style="margin-right: 10px;">
+          <el-select v-model="queryForm.floor" placeholder="楼层" style="width: 100px;" @change="handleFloorChange">
+            <el-option v-for="option in floorOptions" :key="option.value" :label="option.label" :value="option.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="选择储位">
-          <el-select
-            v-model="queryForm.storageLocation"
-            placeholder="储位"
-            class="form-item-input"
-            clearable
-          >
-            <el-option
-              v-for="item in storageLocationOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+        <el-form-item label="" style="margin-right: 10px;">
+          <el-select v-model="queryForm.direction" placeholder="库位" style="width: 80px;"
+            @change="handleDirectionChange">
+            <el-option v-for="option in directionOptions" :key="option.value" :label="option.label"
+              :value="option.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="" style="margin-right: 10px;">
+          <el-select v-model="queryForm.location" placeholder="货位" style="width: 100px;">
+            <el-option v-for="option in locationOptions" :key="option.value" :label="option.label"
+              :value="option.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="" style="margin-right: 10px;">
+          <el-select v-model="queryForm.sensorType" placeholder="传感器类型" style="width: 130px;">
+            <el-option label="环境传感器" value="1" />
+            <el-option label="包芯传感器" value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -106,16 +64,11 @@
 
     <!-- 数据表格 -->
     <div class="table-wrapper">
-      <el-table
-        :data="tableData"
-        border
-        stripe
-        style="width: 100%"
-        :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
-      >
+      <el-table :data="tableData" border stripe style="width: 100%"
+        :header-cell-style="{ background: '#f5f7fa', color: '#606266' }">
         <el-table-column prop="date" label="日期" min-width="120" align="center" />
         <el-table-column prop="time" label="时间" min-width="100" align="center" />
-        
+
         <!-- 天气列组 -->
         <el-table-column label="天气" align="center">
           <el-table-column prop="weatherTemp" label="温度" min-width="80" align="center">
@@ -192,15 +145,9 @@
       <div class="table-footer">
         <div class="total-info">共有记录{{ total }}条</div>
         <div class="pagination-wrapper">
-          <el-pagination
-            v-model:current-page="pagination.currentPage"
-            v-model:page-size="pagination.pageSize"
-            :page-sizes="[10, 15, 20, 50, 100]"
-            :total="total"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
+          <el-pagination v-model:current-page="pagination.currentPage" v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 15, 20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange" @current-change="handleCurrentChange" />
         </div>
       </div>
     </div>
@@ -208,10 +155,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { Search, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { TableData } from './types'
+import { timeOptions, warehouseOptions, floorOptions, dir1Options, dir2Options, locationOptions } from '../../config'
 
 // 获取今天的日期字符串（YYYY-MM-DD格式）
 const getTodayDate = (): string => {
@@ -224,40 +172,32 @@ const getTodayDate = (): string => {
 
 // 查询表单
 const todayDate = getTodayDate()
-const queryForm = reactive({
-  startDate: todayDate,
-  endDate: todayDate,
+const queryForm = ref({
+  dataRange: [todayDate, todayDate],
   time: '',
   warehouse: '',
-  storageArea: '',
-  storageLocation: ''
+  floor: '',
+  direction: '',
+  location: '',
+  sensorType: '1'
 })
 
-// 时间选项（0-23点）
-const timeOptions = Array.from({ length: 24 }, (_, i) => ({
-  value: i,
-  label: `${i}点`
-}))
+// 仓库变化时，清空楼层、方向、货位
+const handleWarehouseChange = () => {
+  queryForm.value.floor = '';
+  handleFloorChange();
+};
 
-// 仓库选项
-const warehouseOptions = ref([
-  { value: '1', label: '一号仓库' },
-  { value: '2', label: '二号仓库' }
-])
+// 楼层变化时，清空方向、货位
+const handleFloorChange = () => {
+  queryForm.value.direction = '';
+  handleDirectionChange();
+};
 
-// 储区选项
-const storageAreaOptions = ref([
-  { value: '1', label: '储区A' },
-  { value: '2', label: '储区B' },
-  { value: '3', label: '储区C' }
-])
-
-// 储位选项
-const storageLocationOptions = ref([
-  { value: '1', label: '储位1' },
-  { value: '2', label: '储位2' },
-  { value: '3', label: '储位3' }
-])
+// 方向变化时，清空货位
+const handleDirectionChange = () => {
+  queryForm.value.location = '';
+};
 
 // 表格数据
 const tableData = ref<TableData[]>([])
@@ -271,31 +211,46 @@ const pagination = reactive({
 // 总记录数
 const total = ref(0)
 
+// 方向编码转换为可读名称
+const getDirectionName = (directionCode: string, buildingCode: string) => {
+  if (Number(buildingCode) < 46) {
+    return directionCode === '01' ? '东库' : '西库';
+  } else {
+    return directionCode === '01' ? '南库' : '北库';
+  }
+};
+
+// 库位（方向）选项
+const directionOptions = computed(() => {
+  return +queryForm.value.warehouse < 46 ? dir1Options : dir2Options;
+})
+
+
 // 生成假数据
 const generateMockData = (): TableData[] => {
   const data: TableData[] = []
   // 使用查询表单中的日期
-  const baseDate = queryForm.startDate || todayDate
-  
+  const baseDate = queryForm.value.dataRange[0] || todayDate
+
   // 生成219条数据
   for (let i = 0; i < 219; i++) {
     const hour = Math.floor(i / 15) % 24
     const minute = (i % 15) * 4
     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-    
+
     // 生成随机温度值（20-30度之间）
     const baseTemp = 23 + Math.random() * 2
     const coreTemp = baseTemp + (Math.random() - 0.5) * 0.1
     const ambientTemp = baseTemp + (Math.random() - 0.5) * 0.1
-    
+
     // 生成随机湿度值（30-50%之间）
     const baseHumidity = 40 + Math.random() * 10
     const ambientHumidity = baseHumidity + (Math.random() - 0.5) * 5
-    
+
     // 生成天气数据（部分为空）
     const weatherTemp = i % 3 === 0 ? null : (20 + Math.random() * 10).toFixed(1)
     const weatherHumidity = i % 3 === 0 ? null : (30 + Math.random() * 20).toFixed(1)
-    
+
     data.push({
       date: baseDate,
       time: timeStr,
@@ -312,7 +267,7 @@ const generateMockData = (): TableData[] => {
       ambientHumidityAvg: ambientHumidity.toFixed(1)
     })
   }
-  
+
   return data
 }
 
@@ -325,7 +280,7 @@ const loadData = () => {
   // const response = await fetchReportData(queryForm)
   // allData.value = response.data
   // total.value = response.total
-  
+
   // 当前使用假数据
   allData.value = generateMockData()
   total.value = allData.value.length
@@ -341,27 +296,27 @@ const updateTableData = () => {
 
 // 校验表单
 const validateForm = (): boolean => {
-  if (!queryForm.startDate) {
+  if (!queryForm.value.dataRange[0]) {
     ElMessage.warning('请选择开始日期')
     return false
   }
-  if (!queryForm.endDate) {
+  if (!queryForm.value.dataRange[1]) {
     ElMessage.warning('请选择结束日期')
     return false
   }
-  if (queryForm.time === '' || queryForm.time === null || queryForm.time === undefined) {
+  if (queryForm.value.time === '' || queryForm.value.time === null || queryForm.value.time === undefined) {
     ElMessage.warning('请选择时间')
     return false
   }
-  if (!queryForm.warehouse) {
+  if (!queryForm.value.warehouse) {
     ElMessage.warning('请选择仓库')
     return false
   }
-  if (!queryForm.storageArea) {
+  if (!queryForm.value.floor) {
     ElMessage.warning('请选择储区')
     return false
   }
-  if (!queryForm.storageLocation) {
+  if (!queryForm.value.direction) {
     ElMessage.warning('请选择储位')
     return false
   }
@@ -374,10 +329,10 @@ const handleQuery = () => {
   if (!validateForm()) {
     return
   }
-  
+
   // TODO: 调用查询接口
   // loadData()
-  
+
   // 当前重新加载假数据
   pagination.currentPage = 1
   loadData()

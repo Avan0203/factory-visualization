@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-04-17 01:06:23
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-06-05 16:32:08
+ * @LastEditTime: 2025-11-29 21:59:41
  * @FilePath: /factory-visualization/src/layout/index.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -50,12 +50,10 @@
 import { ElMenu, ElMenuItem, ElContainer, ElHeader, ElMain, ElCol, ElRow, ElButton, ElMessage, ElMessageBox } from 'element-plus';
 import { Operation, Setting, SwitchButton, Refresh } from '@element-plus/icons-vue';
 import { ref, onMounted, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
 import chart from './chart/chart.vue';
 import tableRef from './table/table.vue';
 import monitor from './monitor/monitor.vue';
 
-const router = useRouter();
 const activeIndex = ref('1');
 
 const handleSelect = (key) => {
@@ -88,7 +86,6 @@ const handleLogout = () => {
         localStorage.removeItem('userInfo');
         
         // 跳转到登录页面
-        router.push('/login');
         
         ElMessage.success('已退出登录');
     }).catch(() => {
@@ -99,10 +96,6 @@ const handleLogout = () => {
 // 检查认证状态
 const checkAuth = () => {
     // NOTE：暂时跳过认证检查
-    // const isLoggedIn = localStorage.getItem('isLoggedIn');
-    // if (isLoggedIn !== 'true') {
-    //     router.push('/login');
-    // }
 }
 
 onMounted(() => {

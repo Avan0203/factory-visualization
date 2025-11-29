@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan wuyifan@udschina.com
  * @Date: 2025-11-26 16:30:26
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-28 15:27:14
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-11-29 22:49:29
  * @FilePath: \factory-visualization\src\config\inedex.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -85,23 +85,23 @@ export const dir2Options = [
 export const floorOptions = [
     {
         label: '第1层',
-        value: '01'
+        value: '1'
     },
     {
         label: '第2层',
-        value: '02'
+        value: '2'
     },
     {
         label: '第3层',
-        value: '03'
+        value: '3'
     },
     {
         label: '第4层',
-        value: '04'
+        value: '4'
     },
     {
         label: '第5层',
-        value: '05'
+        value: '5'
     }
 ]
 

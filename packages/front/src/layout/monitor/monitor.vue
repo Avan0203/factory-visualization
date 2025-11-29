@@ -18,11 +18,11 @@
 
         <div v-if="showBuildingInfo" class="building-info">
             <ul class="building-info-content" @click="panelClick">
-                <li id="1">第一层</li>
-                <li id="2">第二层</li>
-                <li id="3">第三层</li>
-                <li id="4">第四层</li>
-                <li id="5">第五层</li>
+                <li :class="{ active: selectedFloor === 1 }" id="1">第一层</li>
+                <li :class="{ active: selectedFloor === 2 }" id="2">第二层</li>
+                <li :class="{ active: selectedFloor === 3 }" id="3">第三层</li>
+                <li :class="{ active: selectedFloor === 4 }" id="4">第四层</li>
+                <li :class="{ active: selectedFloor === 5 }" id="5">第五层</li>
             </ul>
         </div>
     </div>
@@ -53,6 +53,7 @@ const options = [
 ]
 
 const showBuildingInfo = ref(false);
+const selectedFloor = ref<number | null>(null);
 
 const path = ref<0 | 1>(0);
 
@@ -106,12 +107,16 @@ onMounted(() => {
 });
 
 const panelClick = (e: MouseEvent) => {
-    const id = (e.target as HTMLElement).id;
-    console.log(id);
-    render.switchContext(warehouseContext);
-    e.stopPropagation();
-    showBuildingInfo.value = false;
-    isBuildingContext.value = false;
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'LI') {
+        const id = parseInt(target.id);
+        selectedFloor.value = id;
+        console.log(id);
+        render.switchContext(warehouseContext);
+        e.stopPropagation();
+        showBuildingInfo.value = false;
+        isBuildingContext.value = false;
+    }
 }
 
 onBeforeUnmount(() => {
@@ -130,26 +135,57 @@ onBeforeUnmount(() => {
     position: absolute;
     bottom: 10px;
     right: 10px;
-    width: 200px;
-    background-color: rgba(159, 159, 159, 0.5);
-    border-radius: 4px;
+    width: 220px;
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.85) 0%, rgba(40, 40, 40, 0.9) 100%);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .building-info-content {
     display: flex;
     flex-direction: column;
-    padding: 0 10px;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
 }
 
 .building-info-content>li {
     list-style: none;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 2px 4px;
-    margin-bottom: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 0;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+    user-select: none;
 }
 
 .building-info-content>li:hover {
-    color: cornsilk;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateX(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.building-info-content>li.active {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.25) 0%, rgba(255, 152, 0, 0.3) 100%);
+    border-color: rgba(255, 193, 7, 0.6);
+    color: #ffd54f;
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(255, 193, 7, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.building-info-content>li.active:hover {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.35) 0%, rgba(255, 152, 0, 0.4) 100%);
+    border-color: rgba(255, 193, 7, 0.8);
+    box-shadow: 0 0 16px rgba(255, 193, 7, 0.5), 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 </style>

@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-28 15:23:43
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-11-30 01:41:44
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -12,7 +12,7 @@
             style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
             <el-form-item label="">
                 <el-date-picker v-model="queryForm.dataRange" type="daterange" range-separator="至"
-                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;"/>
+                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;" @change="dataChange" />
             </el-form-item>
             <el-form-item label="" style="margin-right: 10px;">
                 <el-select v-model="queryForm.warehouse" placeholder="仓库" style="width: 170px;"
@@ -22,8 +22,7 @@
                 </el-select>
             </el-form-item>
             <el-form-item label="" style="margin-right: 10px;">
-                <el-select v-model="queryForm.floor" placeholder="楼层" style="width: 100px;"
-                    @change="handleFloorChange">
+                <el-select v-model="queryForm.floor" placeholder="楼层" style="width: 100px;" @change="handleFloorChange">
                     <el-option v-for="option in floorOptions" :key="option.value" :label="option.label"
                         :value="option.value" />
                 </el-select>
@@ -96,18 +95,31 @@ const generateDateRange = () => {
     };
 };
 
-// TODO 根据日期范围生成日期标签
-// 生成日期标签
-const generateDateLabels = () => {
-    const today = new Date();
-    const labels = [];
 
-    for (let i = -15; i <= 15; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+const dataChange = (value) => {
+    if (value && value.length === 2) {
+        const startDate = formatDate(value[0]);
+        const endDate = formatDate(value[1]);
+        dateLabels.value = generateDateLabels(startDate, endDate);
+        // 更新图表x轴
+        if (myChart) {
+            updateChartData();
+        }
+    }
+}
+
+// 生成日期标签（根据日期范围）
+const generateDateLabels = (startDate: string, endDate: string) => {
+    const labels = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const current = new Date(start);
+
+    while (current <= end) {
+        const month = String(current.getMonth() + 1).padStart(2, '0');
+        const day = String(current.getDate()).padStart(2, '0');
         labels.push(`${month}-${day}`);
+        current.setDate(current.getDate() + 1);
     }
 
     return labels;
@@ -116,10 +128,10 @@ const generateDateLabels = () => {
 // 查询表单数据
 const queryForm = ref({
     dataRange: [],
-    warehouse: '', // 楼号（buildingCode）2
-    floor: '', // 楼层索引（0, 1, 2...）
-    direction: '', // 方向编码（01, 02）
-    location: '', // 货位号
+    warehouse: '01', // 楼号（buildingCode）2
+    floor: '1', // 楼层索引（0, 1, 2...）
+    direction: '01', // 方向编码（01, 02）
+    location: '01', // 货位号
     queryType: 'temperature',
     sensorType: '1'
 });
@@ -173,8 +185,9 @@ const initChart = () => {
     if (chartRef.value && !myChart) {
         myChart = echarts.init(chartRef.value);
 
-        // 生成日期标签
-        dateLabels.value = generateDateLabels();
+        // 生成日期标签（使用默认日期范围）
+        const dateRange = generateDateRange();
+        dateLabels.value = generateDateLabels(dateRange.start, dateRange.end);
 
         const option = {
             title: {
@@ -185,12 +198,24 @@ const initChart = () => {
                 trigger: 'axis',
                 axisPointer: { type: 'cross' }
             },
+            grid: {
+                left: '3%',
+                right: '18%',
+                bottom: '15%',
+                top: '15%',
+                containLabel: true
+            },
             legend: {
                 type: 'scroll',
                 orient: 'vertical',
-                right: 0,
-                top: 20,
-                bottom: 20,
+                right: '3%',
+                top: '10%',
+                itemWidth: 14,
+                itemHeight: 14,
+                textStyle: {
+                    fontSize: 12
+                },
+                itemGap: 8
             },
             toolbox: {
                 feature: {
@@ -202,7 +227,8 @@ const initChart = () => {
             dataZoom: [
                 {
                     type: 'slider',
-                    xAxisIndex: 0
+                    xAxisIndex: 0,
+                    bottom: '5%'
                 },
                 {
                     type: 'inside',
@@ -212,15 +238,41 @@ const initChart = () => {
             xAxis: {
                 type: 'category',
                 name: '时间',
-                data: dateLabels.value
+                data: dateLabels.value,
+                axisLabel: {
+                    rotate: 45,
+                    interval: 0,
+                    formatter: function(value: string) {
+                        return value;
+                    }
+                },
+                nameLocation: 'middle',
+                nameGap: 30
             },
-            yAxis: {
-                type: 'value',
-                name: '数值',
-                min: 1,
-                max: 36,
-                interval: 2.5
-            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: '温度(℃)',
+                    position: 'left',
+                    min: 0,
+                    max: 40,
+                    interval: 5,
+                    axisLabel: {
+                        formatter: '{value} °C'
+                    }
+                },
+                {
+                    type: 'value',
+                    name: '湿度(%)',
+                    position: 'right',
+                    min: 0,
+                    max: 100,
+                    interval: 10,
+                    axisLabel: {
+                        formatter: '{value} %'
+                    }
+                }
+            ],
             series: chartData.value.series
         };
 
@@ -239,48 +291,47 @@ const handleResize = () => {
 };
 
 // 将日期转换为 YYYY-MM-DD 格式
-const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+const formatDate = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
 
 // 将数据按日期映射到日期标签数组
-const mapDataToDateLabels = (data, queryType) => {
+const mapDataToDateLabels = (data: any[], queryType: string, startDate: string, endDate: string) => {
     // 生成日期范围对应的日期字符串数组
-    const today = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     const dateStrings = [];
-    for (let i = -15; i <= 15; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        dateStrings.push(formatDate(date));
+    const current = new Date(start);
+    
+    while (current <= end) {
+        dateStrings.push(formatDate(current));
+        current.setDate(current.getDate() + 1);
     }
 
-    // 创建日期到数据的映射
+    // 创建日期到数据的映射（后端已经按日期分组并计算平均值）
     const dataMap = new Map();
     data.forEach(item => {
-        const recordDate = new Date(item.recordtime);
-        const dateStr = formatDate(recordDate);
+        // 后端返回的recordTime格式为 YYYY-MM-DD
+        const dateStr = item.recordTime;
         const value = queryType === 'temperature' ? item.temperature : item.humidity;
-
-        if (!dataMap.has(dateStr)) {
-            dataMap.set(dateStr, []);
-        }
-        const values = dataMap.get(dateStr);
-        values.push(value);
+        dataMap.set(dateStr, value);
     });
 
-    // 将数据映射到日期标签数组（如果某天有多条数据，取平均值）
+    // 将数据映射到日期标签数组
     const mappedData = [];
     dateStrings.forEach(dateStr => {
-        const values = dataMap.get(dateStr);
-        if (values && values.length > 0) {
-            // 计算平均值
-            const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-            mappedData.push(Number(avg.toFixed(1)));
+        const value = dataMap.get(dateStr);
+        // 如果值存在（包括0，因为0度是有效的温度值），则显示该值
+        // 只有当值为undefined或null时才使用null（表示没有数据）
+        if (value !== undefined && value !== null) {
+            // 0度是有效数据，应该显示
+            mappedData.push(Number(value.toFixed(1)));
         } else {
-            // 没有数据时使用 null（echarts 会跳过）
+            // 没有数据时使用 null（echarts 会跳过，不显示该点）
             mappedData.push(null);
         }
     });
@@ -303,10 +354,11 @@ const handleAdd = async () => {
     const floorIndex = parseInt(queryForm.value.floor);
     const floorName = `第${floorIndex + 1}层`;
 
-    const directionName = getDirectionName(queryForm.value.direction, buildingName);
+    const directionName = getDirectionName(queryForm.value.direction, buildingData);
 
-    // 生成标签名称
-    const tagName = `${buildingName}${floorName}${directionName}${+queryForm.value.location}号位`;
+    // 生成标签名称，包含查询类型
+    const queryTypeName = queryForm.value.queryType === 'temperature' ? '温度' : '湿度';
+    const tagName = `${buildingName}${floorName}${directionName}${+queryForm.value.location}号位-${queryTypeName}`;
 
     // 检查是否已存在相同的标签
     const existingTag = tags.value.find(tag => tag.name === tagName);
@@ -323,13 +375,25 @@ const handleAdd = async () => {
             direction: queryForm.value.direction,
             location: queryForm.value.location,
             dataRange: queryForm.value.dataRange,
-            queryType: queryForm.value.queryType as 'temperature' | 'humidity'
+            queryType: queryForm.value.queryType as 'temperature' | 'humidity',
+            sensorType: queryForm.value.sensorType
         };
 
         const sensorData = await querySensorData(queryParams);
+        console.log('sensorData: ', sensorData);
+
+        // 获取日期范围
+        const startDate = formatDate(queryForm.value.dataRange[0]);
+        const endDate = formatDate(queryForm.value.dataRange[1]);
+
+        // 更新日期标签（如果日期范围变化了）
+        const newDateLabels = generateDateLabels(startDate, endDate);
+        if (JSON.stringify(dateLabels.value) !== JSON.stringify(newDateLabels)) {
+            dateLabels.value = newDateLabels;
+        }
 
         // 将数据映射到日期标签数组
-        const chartDataArray = mapDataToDateLabels(sensorData, queryForm.value.queryType);
+        const chartDataArray = mapDataToDateLabels(sensorData, queryForm.value.queryType, startDate, endDate);
 
         // 检查是否有数据
         const hasData = chartDataArray.some(val => val !== null && val !== undefined);
@@ -354,12 +418,16 @@ const handleAdd = async () => {
         const symbolTypes = ['circle', 'rect', 'diamond', 'triangle', 'pin', 'arrow', 'roundRect', 'star'];
         const symbolType = symbolTypes[chartData.value.series.length % symbolTypes.length];
 
+        // 根据查询类型确定使用哪个Y轴：温度用左轴(0)，湿度用右轴(1)
+        const yAxisIndex = queryForm.value.queryType === 'temperature' ? 0 : 1;
+        
         const newSeries = {
             name: tagName,
             type: 'line',
             symbol: symbolType,
             symbolSize: 6,
             smooth: true,
+            yAxisIndex: yAxisIndex,
             data: chartDataArray
         };
 
@@ -369,16 +437,6 @@ const handleAdd = async () => {
         // 更新图表
         updateChartData();
 
-        // 清空表单
-        queryForm.value = {
-            dataRange: queryForm.value.dataRange,
-            warehouse: '',
-            floor: '',
-            direction: '',
-            location: '',
-            queryType: 'temperature',
-            sensorType: '1'
-        };
 
         ElMessage.success('添加成功');
     } catch (error) {
@@ -409,8 +467,9 @@ const handleTagClose = (tag) => {
 
 // 清空方法
 const handleReset = () => {
+    // 清空表单
     queryForm.value = {
-        dataRange: [],
+        dataRange: queryForm.value.dataRange || [],
         warehouse: '',
         floor: '',
         direction: '',
@@ -418,6 +477,17 @@ const handleReset = () => {
         queryType: 'temperature',
         sensorType: '1'
     };
+    
+    // 清空标签
+    tags.value = [];
+    
+    // 清空图表数据
+    chartData.value.series = [];
+    
+    // 更新图表
+    updateChartData();
+    
+    ElMessage.success('已清空');
 };
 
 // 根据查询条件更新图表数据
@@ -434,12 +504,24 @@ const updateChartData = () => {
             trigger: 'axis',
             axisPointer: { type: 'cross' }
         },
+        grid: {
+            left: '3%',
+            right: '18%',
+            bottom: '15%',
+            top: '15%',
+            containLabel: true
+        },
         legend: {
             type: 'scroll',
             orient: 'vertical',
-            right: 0,
-            top: 20,
-            bottom: 20,
+            right: '3%',
+            top: '10%',
+            itemWidth: 14,
+            itemHeight: 14,
+            textStyle: {
+                fontSize: 12
+            },
+            itemGap: 8
         },
         toolbox: {
             feature: {
@@ -451,7 +533,8 @@ const updateChartData = () => {
         dataZoom: [
             {
                 type: 'slider',
-                xAxisIndex: 0
+                xAxisIndex: 0,
+                bottom: '5%'
             },
             {
                 type: 'inside',
@@ -461,15 +544,41 @@ const updateChartData = () => {
         xAxis: {
             type: 'category',
             name: '时间',
-            data: dateLabels.value
+            data: dateLabels.value,
+            axisLabel: {
+                rotate: 45,
+                interval: 0,
+                formatter: function(value: string) {
+                    return value;
+                }
+            },
+            nameLocation: 'middle',
+            nameGap: 30
         },
-        yAxis: {
-            type: 'value',
-            name: '数值',
-            min: 1,
-            max: 36,
-            interval: 2.5
-        },
+        yAxis: [
+            {
+                type: 'value',
+                name: '温度(℃)',
+                position: 'left',
+                min: 0,
+                max: 40,
+                interval: 5,
+                axisLabel: {
+                    formatter: '{value} °C'
+                }
+            },
+            {
+                type: 'value',
+                name: '湿度(%)',
+                position: 'right',
+                min: 0,
+                max: 100,
+                interval: 10,
+                axisLabel: {
+                    formatter: '{value} %'
+                }
+            }
+        ],
         series: chartData.value.series
     };
 

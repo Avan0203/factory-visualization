@@ -1,6 +1,6 @@
 import { pool } from '../config/db';
 import { SensorReading } from '../models/SensorReading';
-import { QuerySensorParams, QuerySensorResult } from '../types';
+import { QuerySensorParams, QuerySensorResult, QueryTableParams, QueryTableResult, TableRow } from '../types';
 
 /**
  * 获取徐州地区最新的温湿度数据
@@ -49,7 +49,7 @@ export const getRecentXuzhouReadings = async (count: number = 100): Promise<Sens
  */
 export const querySensorData = async (params: QuerySensorParams): Promise<QuerySensorResult[]> => {
   try {
-    const { code, startDate, endDate, query, sensor } = params;
+    const { code, startDate, endDate, sensor } = params;
 
     // 验证参数
     if (!code || !startDate || !endDate) {
@@ -166,3 +166,110 @@ export const querySensorData = async (params: QuerySensorParams): Promise<QueryS
     throw error;
   }
 };
+
+export const queryTableData = async (param: QueryTableParams): Promise<QueryTableResult> => {
+  try {
+    const { code, startDate, endDate, sensor, pageSize, pageNum } = param;
+
+    // 验证参数
+    if (!code || !startDate || !endDate) {
+      throw new Error('缺少必要参数：code, startDate, endDate');
+    }
+
+    // 验证分页参数
+    const validPageSize = Math.max(1, Math.floor(pageSize || 15));
+    const validPageNum = Math.max(1, Math.floor(pageNum || 1));
+    const offset = (validPageNum - 1) * validPageSize;
+
+    const sensorType = sensor === 1 ? '环境传感器' : '包芯传感器';
+
+    // 查询总数
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) as total
+       FROM tdwd_scg_fqua_tempwet_collect 
+       WHERE location = ?
+         AND remark = ?
+         AND baseorgname LIKE '徐州%'
+         AND DATE(COALESCE(NULLIF(recorddate, ''), recordtime)) >= ?
+         AND DATE(COALESCE(NULLIF(recorddate, ''), recordtime)) <= ?`,
+      [code, sensorType, startDate, endDate]
+    );
+
+    const total = Array.isArray(countRows) && countRows.length > 0 
+      ? (countRows[0] as any).total 
+      : 0;
+
+    // 查询分页数据
+    // 注意：LIMIT 和 OFFSET 不能使用占位符，需要直接拼接（已确保是整数，避免 SQL 注入）
+    const [rows] = await pool.execute(
+      `SELECT 
+         DATE(COALESCE(NULLIF(recorddate, ''), recordtime)) as date,
+         TIME(recordtime) as time,
+         temperature,
+         humidity,
+         voltage,
+         cjqbh
+       FROM tdwd_scg_fqua_tempwet_collect 
+       WHERE location = ?
+         AND remark = ?
+         AND baseorgname LIKE '徐州%'
+         AND DATE(COALESCE(NULLIF(recorddate, ''), recordtime)) >= ?
+         AND DATE(COALESCE(NULLIF(recorddate, ''), recordtime)) <= ?
+       ORDER BY recordtime ASC
+       LIMIT ${validPageSize} OFFSET ${offset}`,
+      [code, sensorType, startDate, endDate]
+    );
+
+    // 转换数据格式
+    const data: TableRow[] = [];
+    if (Array.isArray(rows)) {
+      for (const row of rows as any[]) {
+        // 处理日期格式
+        let dateStr = row.date;
+        if (dateStr instanceof Date) {
+          const year = dateStr.getFullYear();
+          const month = String(dateStr.getMonth() + 1).padStart(2, '0');
+          const day = String(dateStr.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+        } else if (typeof dateStr === 'string' && dateStr.includes(' ')) {
+          dateStr = dateStr.split(' ')[0];
+        }
+
+        // 处理时间格式
+        let timeStr = row.time;
+        if (timeStr instanceof Date) {
+          const hours = String(timeStr.getHours()).padStart(2, '0');
+          const minutes = String(timeStr.getMinutes()).padStart(2, '0');
+          const seconds = String(timeStr.getSeconds()).padStart(2, '0');
+          timeStr = `${hours}:${minutes}:${seconds}`;
+        } else if (typeof timeStr === 'string' && timeStr.includes('.')) {
+          // 如果时间包含毫秒，只取时分秒部分
+          timeStr = timeStr.split('.')[0];
+        }
+
+        data.push({
+          date: dateStr,
+          time: timeStr || '',
+          temperature: row.temperature ? Number(Number(row.temperature).toFixed(2)) : 0,
+          humidity: row.humidity ? Number(Number(row.humidity).toFixed(2)) : 0,
+          voltage: row.voltage != null ? Number(Number(row.voltage).toFixed(2)) : 0,
+          cjqbh: row.cjqbh || ''
+        });
+      }
+    }
+
+    // 计算总页数
+    const totalPage = Math.ceil(Number(total) / validPageSize);
+
+    return {
+      data,
+      total: Number(total),
+      totalPage,
+      pageSize: validPageSize,
+      pageNum: validPageNum
+    };
+  } catch (error) {
+    console.error('查询表格数据失败:', error);
+    throw error;
+  }
+}

@@ -4,31 +4,31 @@
  * @Description: 传感器相关 API
  */
 import request from './request';
-import { QuerySensorParams, QuerySensorResult } from 'backend';
+import { QuerySensorParams, QuerySensorResult, QueryTableParams, QueryTableResult } from 'backend';
 
 /**
  * 格式化日期为 YYYY-MM-dd 格式
  */
 const formatDate = (date: string | Date): string => {
   if (!date) return '';
-  
+
   let dateObj: Date;
   if (typeof date === 'string') {
     dateObj = new Date(date);
   } else {
     dateObj = date;
   }
-  
+
   // 检查日期是否有效
   if (isNaN(dateObj.getTime())) {
     console.warn('Invalid date:', date);
     return '';
   }
-  
+
   const year = dateObj.getFullYear();
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
-  
+
   return `${year}-${month}-${day}`;
 };
 
@@ -43,17 +43,38 @@ export const querySensorData = async (params: any): Promise<QuerySensorResult[]>
   const endDate = formatDate(dataRange[1]);
 
   const queryParams: QuerySensorParams = {
-    code:`${warehouse}-${floor}-${direction}-${location}`,
+    code: `${warehouse}-${floor}-${direction}-${location}`,
     startDate,
     endDate,
-    query:queryType,
-    sensor:sensorType,
+    query: queryType,
+    sensor: sensorType,
   }
-  
+
   const result = await request.get<QuerySensorResult[]>('/api/sensors/query', {
     params: queryParams
   });
-  
+
   return result;
 };
 
+
+export const queryTableData = async (params: any): Promise<QueryTableResult> => {
+  const { warehouse, floor, direction, location, dataRange, pageSize, pageNum, sensorType } = params;
+  const startDate = formatDate(dataRange[0]);
+  const endDate = formatDate(dataRange[1]);
+
+  const queryParams: QueryTableParams = {
+    code: `${warehouse}-${floor}-${direction}-${location}`,
+    startDate,
+    endDate,
+    sensor: sensorType,
+    pageSize,
+    pageNum,
+  }
+
+  const result = await request.get<QueryTableResult>('/api/sensors/table', {
+    params: queryParams
+  });
+
+  return result;
+}

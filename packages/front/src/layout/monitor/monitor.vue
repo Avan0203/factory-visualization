@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-17 01:01:46
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-27 16:20:04
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-12-01 01:07:35
  * @FilePath: /factory-visualization/src/layout/monitor/monitor.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -34,6 +34,7 @@ import { Render } from './render/render';
 import BuildingContext from './render/buildingContext';
 import WarehouseContext from './render/warehouseContext';
 import { Mesh } from 'three';
+import { buildingNameConfig, layerConfig } from '../../config';
 
 const containerRef = ref<HTMLElement | null>(null);
 let render: Render;
@@ -51,6 +52,8 @@ const options = [
         value: 1
     }
 ]
+let currentBuilding = '-1';
+let currentFloor = '-1';
 
 const showBuildingInfo = ref(false);
 const selectedFloor = ref<number | null>(null);
@@ -66,6 +69,8 @@ const backToBuilding = () => {
     render.switchContext(buildingContext);
     showBuildingInfo.value = false;
     isBuildingContext.value = true;
+    currentBuilding = '-1';
+    currentFloor = '-1';
 }
 
 
@@ -87,10 +92,14 @@ onMounted(() => {
             } else {
                 console.log('show building info', object.name);
                 showBuildingInfo.value = true;
+                currentBuilding = buildingNameConfig[object.name].code;
+                console.log('currentBuilding: ', currentBuilding);
             }
         });
         render.on('unselect', () => {
             showBuildingInfo.value = false;
+            currentBuilding = '-1';
+            currentFloor = '-1';
         });
 
         buildingContext.on('setupContext', () => {
@@ -106,6 +115,17 @@ onMounted(() => {
     }
 });
 
+function getLayer(building: string, floor: string) {
+    const key = building + '-' + floor;
+    for (const layerName in layerConfig) {
+        if (layerConfig[layerName].includes(key)) {
+            return layerName;
+        }
+    }
+    console.log('layer not found: ', key);
+    return '';
+}
+
 const panelClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'LI') {
@@ -116,6 +136,11 @@ const panelClick = (e: MouseEvent) => {
         e.stopPropagation();
         showBuildingInfo.value = false;
         isBuildingContext.value = false;
+        currentFloor = id.toString();
+        console.log('currentFloor: ', currentFloor);
+        const layer = getLayer(currentBuilding, currentFloor);
+        console.log('layer: ', layer);
+        warehouseContext.switchLayer(layer);
     }
 }
 

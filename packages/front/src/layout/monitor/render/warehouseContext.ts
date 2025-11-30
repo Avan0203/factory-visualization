@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-20 13:26:22
+ * @LastEditTime: 2025-12-01 01:25:36
  * @FilePath: /factory-visualization/src/layout/monitor/warehouseContext.ts
  * @Description: WarehouseContext - 仓库场景上下文
  */
@@ -20,6 +20,9 @@ import { publicPath, gltfLoader } from '../../../shard';
 
 class WarehouseContext extends Context {
     private selectedGoods: Object3D | null = null;
+    private layer: {
+        [key: string]: Object3D;
+    };
     constructor(renderer: WebGLRenderer) {
         super(renderer);
         // 使用默认的 Y 轴向上（不需要设置 camera.up）
@@ -33,6 +36,7 @@ class WarehouseContext extends Context {
 
         // 初始化 selection 数组（先为空）
         this.selection = [];
+        this.layer = {}
 
         // 初始化场景
         this.setup();
@@ -78,20 +82,33 @@ class WarehouseContext extends Context {
 
         directionalLight.shadow.bias = -0.005;
         directionalLight.shadow.normalBias = 0.02;
-        
+
         this.scene.add(directionalLight);
+    }
+
+    switchLayer(layer: string): void {
+        Object.values(this.layer).forEach(layer => {
+            layer.visible = false;
+        });
+        this.layer[layer].visible = true;
+        this.selection = this.layer[layer].userData['selection'];
     }
 
     #setupModel(): void {
         gltfLoader.load(`${publicPath}can.glb`, ({ scene: gltfScene }) => {
             console.log('can.glb loaded:', gltfScene);
             gltfScene.traverse((child) => {
+                if (child.name.includes('layer')) {
+                    this.layer[child.name] = child;
+                    this.layer[child.name].visible = false;
+                    this.layer[child.name].userData['selection'] = [];
+                }
                 if (child instanceof Mesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
 
-                    if(child.name.includes('goods')){
-                        this.selection.push(child);
+                    if (child.name.includes('goods')) {
+                        child.parent.userData['selection'].push(child);
                     }
                 }
             });
@@ -101,7 +118,6 @@ class WarehouseContext extends Context {
         }, undefined, (error) => {
             console.error('Error loading can.glb:', error);
         });
-
     }
 
     // 激活选择（选择对象）

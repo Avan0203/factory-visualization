@@ -47,8 +47,16 @@ class Render extends EventListener implements IRender {
         this.mouse = new Vector2();
         this.raycaster = new Raycaster();
 
-        // 初始化渲染器
-        this.renderer = new WebGLRenderer({ antialias: true });
+        // 创建 canvas 并获取 WebGL1 上下文（兼容老电脑）
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        
+        // 初始化渲染器，强制使用 WebGL1
+        this.renderer = new WebGLRenderer({ 
+            antialias: true,
+            canvas: canvas,
+            context: gl as WebGLRenderingContext
+        });
         this.renderer.setSize(domElement.clientWidth, domElement.clientHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.outputColorSpace = SRGBColorSpace;

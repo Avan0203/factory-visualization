@@ -9,6 +9,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
 import sensorRoutes from './routes/sensorRoutes';
 import { testDbConnection } from './config/db';
 import { initWebSocketServer, broadcastLatestData } from './services/websocketService';
@@ -34,12 +35,15 @@ app.get('/health', (req, res) => {
   res.json({ status: '正常', time: new Date().toLocaleString() });
 });
 
+// 创建HTTP服务器
+const httpServer = http.createServer(app);
+
 // 启动服务，监听0.0.0.0以允许局域网访问
-app.listen(Number(port), '0.0.0.0', async () => {
+httpServer.listen(Number(port), '0.0.0.0', async () => {
   console.log(`🚀 HTTP服务器启动成功：http://0.0.0.0:${port}`);
   console.log(`   局域网访问地址：http://<本机IP>:${port}`);
   await testDbConnection(); // 测试数据库连接
-  initWebSocketServer();    // 初始化WebSocket
+  initWebSocketServer(httpServer);    // 初始化Socket.io，挂载到HTTP服务器
   
   // 每3秒广播一次最新数据（实时推送）
   setInterval(broadcastLatestData, 3000);

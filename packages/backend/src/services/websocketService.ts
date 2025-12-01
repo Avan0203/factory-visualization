@@ -1,52 +1,57 @@
-import WebSocket, { WebSocketServer } from 'ws';
+import { Server as SocketIOServer, Socket } from 'socket.io';
+import { Server as HTTPServer } from 'http';
 import { getLatestXuzhouReading } from './sensorService';
 
-// 创建WebSocket服务器（端口8080），监听0.0.0.0以允许局域网访问
-export const wss = new WebSocketServer({ port: 8080, host: '0.0.0.0' });
-
-// 存储所有连接的客户端
-const clients = new Set<WebSocket>();
+let io: SocketIOServer | null = null;
 
 /**
- * 初始化WebSocket服务
+ * 初始化Socket.io服务
+ * @param httpServer Express HTTP服务器实例
  */
-export const initWebSocketServer = () => {
+export const initWebSocketServer = (httpServer: HTTPServer) => {
+  // 创建Socket.io实例，挂载到HTTP服务器
+  io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: '*', // 允许所有来源（生产环境建议配置具体域名）
+      methods: ['GET', 'POST']
+    },
+    transports: ['websocket', 'polling'] // 支持WebSocket和轮询
+  });
+
   // 客户端连接时
-  wss.on('connection', (ws) => {
-    console.log('新客户端连接WebSocket');
-    clients.add(ws);
-
+  io.on('connection', (socket: Socket) => {
+    console.log('新客户端连接Socket.io:', socket.id);
+    
     // 给新连接的客户端发送当前最新数据
-    sendLatestData(ws);
-
-    // 客户端断开连接时
-    ws.on('close', () => {
-      console.log('客户端断开WebSocket连接');
-      clients.delete(ws);
-    });
+    sendLatestData(socket);
 
     // 接收客户端消息（可选）
-    ws.on('message', (message) => {
-      console.log(`收到客户端消息: ${message}`);
+    socket.on('message', (message: any) => {
+      console.log(`收到客户端消息 [${socket.id}]:`, message);
+    });
+
+    // 客户端断开连接时
+    socket.on('disconnect', (reason: string) => {
+      console.log(`客户端断开Socket.io连接 [${socket.id}]:`, reason);
     });
   });
 
-  console.log('✅ WebSocket服务器启动成功，端口：8080');
-  console.log('   局域网访问地址：ws://<本机IP>:8080');
+  console.log('✅ Socket.io服务器启动成功');
+  console.log('   与HTTP服务器共用端口');
 };
 
 /**
  * 向单个客户端发送最新数据
  */
-const sendLatestData = async (ws: WebSocket) => {
+const sendLatestData = async (socket: Socket) => {
   try {
     const data = await getLatestXuzhouReading();
     if (data) {
-      ws.send(JSON.stringify({
+      socket.emit('real_time_data', {
         type: 'real_time_data', // 消息类型
         data: data,             // 温湿度数据
         time: new Date().toLocaleString() // 发送时间
-      }));
+      });
     }
   } catch (error) {
     console.error('发送数据给客户端失败:', error);
@@ -57,21 +62,22 @@ const sendLatestData = async (ws: WebSocket) => {
  * 向所有连接的客户端广播最新数据
  */
 export const broadcastLatestData = async () => {
+  if (!io) {
+    console.warn('Socket.io服务器未初始化');
+    return;
+  }
+
   try {
     const data = await getLatestXuzhouReading();
     if (data) {
-      const message = JSON.stringify({
+      const message = {
         type: 'real_time_data',
         data: data,
         time: new Date().toLocaleString()
-      });
+      };
 
-      // 遍历所有客户端并发送
-      clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
-      });
+      // 向所有连接的客户端广播
+      io.emit('real_time_data', message);
     }
   } catch (error) {
     console.error('广播数据失败:', error);

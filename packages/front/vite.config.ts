@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-04-17 00:59:57
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-21 10:37:38
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-01 11:32:48
  * @FilePath: /factory-visualization/vite.config.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -46,7 +46,7 @@ export default defineConfig({
   server: {
     port: 3200,
     open: true,
-    host: true
+    host: '0.0.0.0'
   },
   // 预览服务器配置
   preview: {

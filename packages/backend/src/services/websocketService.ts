@@ -1,8 +1,8 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { getLatestXuzhouReading } from './sensorService';
 
-// 创建WebSocket服务器（端口8080）
-export const wss = new WebSocketServer({ port: 8080 });
+// 创建WebSocket服务器（端口8080），监听0.0.0.0以允许局域网访问
+export const wss = new WebSocketServer({ port: 8080, host: '0.0.0.0' });
 
 // 存储所有连接的客户端
 const clients = new Set<WebSocket>();
@@ -32,6 +32,7 @@ export const initWebSocketServer = () => {
   });
 
   console.log('✅ WebSocket服务器启动成功，端口：8080');
+  console.log('   局域网访问地址：ws://<本机IP>:8080');
 };
 
 /**

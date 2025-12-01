@@ -6,9 +6,33 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ElMessage } from 'element-plus';
 
+// 动态获取API基础URL
+// 如果设置了环境变量VITE_API_BASE_URL，优先使用
+// 否则根据当前页面的hostname动态构建（支持局域网访问）
+const getApiBaseURL = (): string => {
+  // 优先使用环境变量配置
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 获取当前页面的主机信息
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const port = import.meta.env.VITE_API_PORT || '3500';
+  
+  // 如果当前页面是localhost或127.0.0.1，使用localhost
+  // 否则使用当前页面的hostname（支持局域网访问）
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `http://localhost:${port}`;
+  }
+  
+  // 使用当前页面的hostname（支持局域网访问）
+  return `${protocol}//${hostname}:${port}`;
+};
+
 // 创建 axios 实例
 const instance: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3500',
+  baseURL: getApiBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

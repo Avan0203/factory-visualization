@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-29 21:56:54
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-30 01:01:25
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-01 14:41:16
  * @FilePath: /factory-visualization/packages/backend/src/app.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -19,7 +19,7 @@ export * from './types';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3500;
 
 // 允许跨域
 app.use(cors());
@@ -34,9 +34,10 @@ app.get('/health', (req, res) => {
   res.json({ status: '正常', time: new Date().toLocaleString() });
 });
 
-// 启动服务
-app.listen(port, async () => {
-  console.log(`🚀 HTTP服务器启动成功：http://localhost:${port}`);
+// 启动服务，监听0.0.0.0以允许局域网访问
+app.listen(Number(port), '0.0.0.0', async () => {
+  console.log(`🚀 HTTP服务器启动成功：http://0.0.0.0:${port}`);
+  console.log(`   局域网访问地址：http://<本机IP>:${port}`);
   await testDbConnection(); // 测试数据库连接
   initWebSocketServer();    // 初始化WebSocket
   

@@ -4,7 +4,7 @@
  * @Description: 传感器相关 API
  */
 import request from './request';
-import { QuerySensorParams, QuerySensorResult, QueryTableParams, QueryTableResult } from 'backend';
+import { QuerySensorParams, QuerySensorResult, QueryTableParams, QueryTableResult, SensorPushResult, SSEPushResponse } from 'backend';
 
 /**
  * 格式化日期为 YYYY-MM-dd 格式
@@ -78,3 +78,65 @@ export const queryTableData = async (params: any): Promise<QueryTableResult> => 
 
   return result;
 }
+
+/**
+ * SSE订阅参数 - 楼层查询
+ */
+export interface SubscribeFloorParams {
+  type: 'floor';
+  warehouse: string;  // 例如 "01"
+  floor: string;      // 例如 "1"
+  interval: number;  // 推送间隔（毫秒）
+}
+
+/**
+ * SSE订阅参数 - 仓库查询
+ */
+export interface SubscribeWarehouseParams {
+  type: 'warehouse';
+  warehouses: string[];  // 例如 ["01", "02", "03", ...]
+  interval: number;      // 推送间隔（毫秒）
+}
+
+/**
+ * SSE订阅参数（联合类型）
+ */
+export type SubscribeParams = SubscribeFloorParams | SubscribeWarehouseParams;
+
+/**
+ * SSE订阅响应
+ */
+export interface SubscribeResponse {
+  clientId: string;
+  message: string;
+  streamUrl: string;
+}
+
+/**
+ * 设置SSE订阅
+ */
+export const subscribeSensorData = async (params: SubscribeParams): Promise<SubscribeResponse> => {
+  const result = await request.post<SubscribeResponse>('/api/sensors/subscribe', params);
+  return result;
+};
+
+/**
+ * 获取SSE流URL
+ */
+export const getSSEStreamUrl = (clientId: string): string => {
+  // 使用与request相同的逻辑获取API基础URL
+  let baseURL: string;
+  if (import.meta.env.VITE_API_BASE_URL) {
+    baseURL = import.meta.env.VITE_API_BASE_URL;
+  } else {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const port = import.meta.env.VITE_API_PORT || '3500';
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      baseURL = `http://localhost:${port}`;
+    } else {
+      baseURL = `${protocol}//${hostname}:${port}`;
+    }
+  }
+  return `${baseURL}/api/sensors/stream?clientId=${clientId}`;
+};

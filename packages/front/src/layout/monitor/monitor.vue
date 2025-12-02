@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-17 01:01:46
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-01 01:07:35
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-02 13:45:52
  * @FilePath: /factory-visualization/src/layout/monitor/monitor.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -28,13 +28,14 @@
     </div>
 </template>
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { ElSelect, ElOption } from 'element-plus';
 import { Render } from './render/render';
 import BuildingContext from './render/buildingContext';
 import WarehouseContext from './render/warehouseContext';
 import { Mesh } from 'three';
 import { buildingNameConfig, layerConfig } from '../../config';
+import { useSensorSSE } from '../../composables/useSensorSSE';
 
 const containerRef = ref<HTMLElement | null>(null);
 let render: Render;
@@ -60,9 +61,24 @@ const selectedFloor = ref<number | null>(null);
 
 const path = ref<0 | 1>(0);
 
-const pathChange = (value: 0 | 1) => {
+// SSE连接管理
+const { data: sensorData, isConnected, error, connect, disconnect, updateSubscription } = useSensorSSE();
+
+const pathChange = async (value: 0 | 1) => {
     console.log('pathChange: ', value);
     buildingContext.switchLayer(value);
+
+    // 更新仓库查询
+    const warehouses = value === 0
+        ? ['01', '02', '03', '04', '05', '06', '07', '08']
+        : ['46', '47', '48', '49'];
+
+    console.log('更新SSE连接，查询仓库状态，仓库号:', warehouses);
+    await updateSubscription({
+        type: 'warehouse',
+        warehouses: warehouses,
+        interval: 5000
+    });
 }
 
 const backToBuilding = () => {
@@ -71,6 +87,8 @@ const backToBuilding = () => {
     isBuildingContext.value = true;
     currentBuilding = '-1';
     currentFloor = '-1';
+    // 断开SSE连接
+    disconnect();
 }
 
 
@@ -100,11 +118,14 @@ onMounted(() => {
             showBuildingInfo.value = false;
             currentBuilding = '-1';
             currentFloor = '-1';
+            // 断开SSE连接
         });
 
-        buildingContext.on('setupContext', () => {
+        buildingContext.on('setupContext', async () => {
             console.log('setupContext');
-            pathChange(path.value);
+            // pathChange 已经包含了 switchLayer 和 updateSubscription 的逻辑
+            // 不需要重复调用 connect
+            await pathChange(path.value);
         });
 
         (window as any).Context = {
@@ -115,18 +136,9 @@ onMounted(() => {
     }
 });
 
-function getLayer(building: string, floor: string) {
-    const key = building + '-' + floor;
-    for (const layerName in layerConfig) {
-        if (layerConfig[layerName].includes(key)) {
-            return layerName;
-        }
-    }
-    console.log('layer not found: ', key);
-    return '';
-}
 
-const panelClick = (e: MouseEvent) => {
+
+const panelClick = async (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'LI') {
         const id = parseInt(target.id);
@@ -138,13 +150,52 @@ const panelClick = (e: MouseEvent) => {
         isBuildingContext.value = false;
         currentFloor = id.toString();
         console.log('currentFloor: ', currentFloor);
-        const layer = getLayer(currentBuilding, currentFloor);
+        const layer = WarehouseContext.getLayer(currentBuilding, currentFloor);
         console.log('layer: ', layer);
         warehouseContext.switchLayer(layer);
+
+        // 建立SSE连接，推送该楼层的传感器数据
+        if (currentBuilding !== '-1' && currentFloor !== '-1') {
+            console.log('建立SSE连接，仓库:', currentBuilding, '楼层:', currentFloor);
+            await connect({
+                type: 'floor',
+                warehouse: currentBuilding,
+                floor: currentFloor,
+                interval: 5000 // 默认5秒推送一次
+            });
+        }
     }
 }
+// 监听传感器数据变化
+watch(sensorData, (newData) => {
+    if (!newData) return;
+
+    if (newData.type === 'floor') {
+        console.log('[Monitor] 楼层数据更新:', newData.data);
+        // 处理楼层数据，可以传递给warehouseContext
+        warehouseContext.updateFloorSensorData(newData.data);
+    } else if (newData.type === 'warehouse') {
+        console.log('[Monitor] 仓库状态更新:', newData.data);
+        // 处理仓库状态数据，可以传递给buildingContext
+        buildingContext.updateBuildingState(newData.data);
+    }
+}, { deep: true });
+
+// 监听连接状态
+watch(isConnected, (connected) => {
+    console.log('[Monitor] SSE连接状态:', connected ? '已连接' : '已断开');
+});
+
+// 监听错误
+watch(error, (err) => {
+    if (err) {
+        console.error('[Monitor] SSE错误:', err);
+    }
+});
 
 onBeforeUnmount(() => {
+    // 断开SSE连接
+    disconnect();
     // 清理资源
     if (render) {
         render.dispose();

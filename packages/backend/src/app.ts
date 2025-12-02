@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-29 21:56:54
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-01 14:41:16
+ * @LastEditTime: 2025-12-02 14:12:42
  * @FilePath: /factory-visualization/packages/backend/src/app.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -12,7 +12,6 @@ import dotenv from 'dotenv';
 import http from 'http';
 import sensorRoutes from './routes/sensorRoutes';
 import { testDbConnection } from './config/db';
-import { initWebSocketServer, broadcastLatestData } from './services/websocketService';
 
 export * from './types';
 
@@ -43,8 +42,4 @@ httpServer.listen(Number(port), '0.0.0.0', async () => {
   console.log(`🚀 HTTP服务器启动成功：http://0.0.0.0:${port}`);
   console.log(`   局域网访问地址：http://<本机IP>:${port}`);
   await testDbConnection(); // 测试数据库连接
-  initWebSocketServer(httpServer);    // 初始化Socket.io，挂载到HTTP服务器
-  
-  // 每3秒广播一次最新数据（实时推送）
-  setInterval(broadcastLatestData, 3000);
 });

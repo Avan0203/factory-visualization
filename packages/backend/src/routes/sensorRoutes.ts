@@ -8,7 +8,8 @@
  */
 import express from 'express';
 import { getLatestXuzhouReading, getRecentXuzhouReadings, querySensorData, queryTableData } from '../services/sensorService';
-import { QuerySensorParams, QueryTableParams } from '../types';
+import { QuerySensorParams, QueryTableParams, SubscribeParams, SubscribeFloorParams, SubscribeWarehouseParams } from '../types';
+import sseService from '../services/sseService';
 
 const router = express.Router();
 
@@ -61,6 +62,78 @@ router.get('/table', async (req, res) => {
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: '查询表格数据失败', error: (error as Error).message });
+  }
+});
+
+// 设置SSE订阅参数（POST接口）
+router.post('/subscribe', async (req, res) => {
+  try {
+    const { type, warehouse, floor, warehouses, interval } = req.body;
+
+    if (!type || (type !== 'warehouse' && type !== 'floor')) {
+      return res.status(400).json({ message: '缺少必要参数：type (必须为 "warehouse" 或 "floor")' });
+    }
+
+    const validInterval = Math.max(1000, parseInt(interval) || 5000); // 默认5秒，最小1秒
+
+    let subscribeParams: SubscribeParams;
+
+    if (type === 'floor') {
+      // 楼层查询
+      if (!warehouse || !floor) {
+        return res.status(400).json({ message: '楼层查询缺少必要参数：warehouse, floor' });
+      }
+      subscribeParams = {
+        type: 'floor',
+        warehouse: warehouse as string,
+        floor: floor as string,
+        interval: validInterval
+      } as SubscribeFloorParams;
+    } else {
+      // 仓库查询
+      if (!warehouses || !Array.isArray(warehouses) || warehouses.length === 0) {
+        return res.status(400).json({ message: '仓库查询缺少必要参数：warehouses (必须为非空数组)' });
+      }
+      subscribeParams = {
+        type: 'warehouse',
+        warehouses: warehouses as string[],
+        interval: validInterval
+      } as SubscribeWarehouseParams;
+    }
+
+    const clientId = sseService.setClientConfig(subscribeParams);
+
+    res.json({
+      clientId,
+      message: '订阅配置已设置',
+      streamUrl: `/api/sensors/stream?clientId=${clientId}`
+    });
+  } catch (error) {
+    res.status(500).json({ message: '设置订阅失败', error: (error as Error).message });
+  }
+});
+
+// SSE数据流接口（GET接口）
+router.get('/stream', async (req, res) => {
+  try {
+    const { clientId } = req.query;
+
+    if (!clientId) {
+      return res.status(400).json({ message: '缺少必要参数：clientId' });
+    }
+
+    const success = sseService.addClient(res, clientId as string);
+    
+    if (!success) {
+      return res.status(404).json({ message: '客户端配置不存在，请先调用POST /api/sensors/subscribe' });
+    }
+
+    // 注意：不要在这里调用res.end()，SSE连接需要保持打开
+  } catch (error) {
+    console.error('SSE连接错误:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'SSE连接失败', error: (error as Error).message });
+    }
   }
 });
 

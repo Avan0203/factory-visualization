@@ -1,6 +1,6 @@
 import { pool } from '../config/db';
 import { SensorReading } from '../models/SensorReading';
-import { QuerySensorParams, QuerySensorResult, QueryTableParams, QueryTableResult, TableRow } from '../types';
+import { QuerySensorParams, QuerySensorResult, QueryTableParams, QueryTableResult, TableRow, SensorPushResult, WarehousePushResult } from '../types';
 
 /**
  * 获取徐州地区最新的温湿度数据
@@ -270,6 +270,174 @@ export const queryTableData = async (param: QueryTableParams): Promise<QueryTabl
     };
   } catch (error) {
     console.error('查询表格数据失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 根据warehouse-floor前缀查询所有location的最新数据
+ * @param warehouseFloorPrefix 例如 "1号楼-2层"
+ * @returns 以location为key的温湿度数据对象
+ */
+export const getLatestReadingsByWarehouseFloor = async (warehouseFloorPrefix: string): Promise<SensorPushResult> => {
+  try {
+    const searchPattern = `${warehouseFloorPrefix}%`;
+    console.log(`[查询] 查询前缀: ${searchPattern}`);
+    
+    // 先查询一下有哪些location匹配该前缀（用于调试）
+    const [testRows] = await pool.execute(
+      `SELECT DISTINCT location 
+       FROM tdwd_scg_fqua_tempwet_collect 
+       WHERE location LIKE ? AND baseorgname LIKE '徐州%'
+       ORDER BY location
+       LIMIT 20`,
+      [searchPattern]
+    );
+    console.log(`[查询] 匹配的location数量: ${Array.isArray(testRows) ? testRows.length : 0}`);
+    if (Array.isArray(testRows) && testRows.length > 0) {
+      console.log(`[查询] 匹配的location示例:`, (testRows as any[]).slice(0, 5).map((r: any) => r.location));
+    }
+    
+    // 查询所有以warehouseFloorPrefix开头的location的最新数据
+    // 步骤1: 先筛选 location LIKE '楼号-楼层%' 的所有记录
+    // 步骤2: 对每个不同的 location，找到该 location 的最新一条数据（按 recordtime DESC）
+    // 使用子查询 + INNER JOIN 确保每个 location 只返回一条最新记录
+    const [rows] = await pool.execute(
+      `SELECT t1.location, t1.temperature, t1.humidity, t1.recordtime, t1.remark
+       FROM tdwd_scg_fqua_tempwet_collect t1
+       INNER JOIN (
+         SELECT location, MAX(recordtime) as max_recordtime
+         FROM tdwd_scg_fqua_tempwet_collect
+         WHERE location LIKE ? AND baseorgname LIKE '徐州%'
+         GROUP BY location
+       ) t2 ON t1.location = t2.location AND t1.recordtime = t2.max_recordtime
+       WHERE t1.baseorgname LIKE '徐州%'
+       ORDER BY t1.location`,
+      [searchPattern]
+    );
+
+    console.log(`[查询] 查询到 ${Array.isArray(rows) ? rows.length : 0} 条记录`);
+
+    const result: SensorPushResult = {};
+    
+    if (Array.isArray(rows)) {
+      for (const row of rows as any[]) {
+        const location = row.location;
+        if (!location) {
+          console.warn('[查询] 发现空location，跳过');
+          continue;
+        }
+        
+        // 判断传感器类型：remark为"环境传感器"则为1，否则为2
+        const remark: 1 | 2 = row.remark === '环境传感器' ? 1 : 2;
+        
+        // 格式化记录时间
+        let dataStr = '';
+        if (row.recordtime) {
+          const recordTime = row.recordtime instanceof Date 
+            ? row.recordtime 
+            : new Date(row.recordtime);
+          dataStr = recordTime.toISOString();
+        }
+
+        result[location] = {
+          temperature: row.temperature != null ? Number(Number(row.temperature).toFixed(2)) : 0,
+          humidity: row.humidity != null ? Number(Number(row.humidity).toFixed(2)) : 0,
+          data: dataStr,
+          remark
+        };
+      }
+    }
+
+    console.log(`[查询] 返回 ${Object.keys(result).length} 个货位的数据`);
+    console.log(`[查询] 货位列表:`, Object.keys(result));
+
+    return result;
+  } catch (error) {
+    console.error('查询楼层最新数据失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 查询多个仓库的状态（所有楼层所有货位的temppass和thpass）
+ * @param warehouses 仓库号数组，例如 ["01", "02", "03"]
+ * @returns 以仓库号为key的状态对象
+ */
+export const getWarehouseStatus = async (warehouses: string[]): Promise<WarehousePushResult> => {
+  try {
+    
+    const result: WarehousePushResult = {};
+    
+    // 对每个仓库进行查询
+    for (const warehouse of warehouses) {
+      const warehousePrefix = `${warehouse}%`;
+      
+      // 查询该仓库所有location的最新数据
+      // 对于每个location，获取最新的temppass和thpass
+      const [rows] = await pool.execute(
+        `SELECT t1.location, t1.temppass, t1.thpass, t1.recordtime
+         FROM tdwd_scg_fqua_tempwet_collect t1
+         INNER JOIN (
+           SELECT location, MAX(recordtime) as max_recordtime
+           FROM tdwd_scg_fqua_tempwet_collect
+           WHERE location LIKE ? AND baseorgname LIKE '徐州%'
+           GROUP BY location
+         ) t2 ON t1.location = t2.location AND t1.recordtime = t2.max_recordtime
+         WHERE t1.baseorgname LIKE '徐州%'`,
+        [warehousePrefix]
+      );
+
+      // 统计该仓库的状态
+      let allTempPass = true;
+      let allThPass = true;
+      let hasData = false;
+      let maxRecordTime: Date | null = null;
+
+      if (Array.isArray(rows)) {
+        for (const row of rows as any[]) {
+          hasData = true;
+          // 如果任何一个货位的temppass为'N'，则该仓库温度不正常
+          if (row.temppass === 'N') {
+            allTempPass = false;
+          }
+          // 如果任何一个货位的thpass为'N'，则该仓库湿度不正常
+          if (row.thpass === 'N') {
+            allThPass = false;
+          }
+          
+          // 记录最新的时间
+          if (row.recordtime) {
+            const recordTime = row.recordtime instanceof Date 
+              ? row.recordtime 
+              : new Date(row.recordtime);
+            if (!maxRecordTime || recordTime > maxRecordTime) {
+              maxRecordTime = recordTime;
+            }
+          }
+        }
+      }
+
+      // 格式化时间
+      let dataStr = '';
+      if (maxRecordTime) {
+        dataStr = maxRecordTime.toISOString();
+      }
+
+      // 如果没有数据，默认状态为正常
+      result[warehouse] = {
+        temppass: hasData ? allTempPass : true,
+        thpass: hasData ? allThPass : true,
+        data: dataStr
+      };
+    }
+
+    console.log(`[查询] 返回 ${Object.keys(result).length} 个仓库的状态`);
+    console.log(`[查询] 仓库状态:`, result);
+
+    return result;
+  } catch (error) {
+    console.error('查询仓库状态失败:', error);
     throw error;
   }
 }

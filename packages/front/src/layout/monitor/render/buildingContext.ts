@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-11-28 14:37:11
+ * @LastEditTime: 2025-12-02 13:25:06
  * @FilePath: /factory-visualization/src/layout/monitor/buildingContext.ts
  * @Description: BuildingContext - 建筑场景上下文
  */
@@ -30,8 +30,11 @@ import { Context } from './context';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { publicPath, gltfLoader, textureLoader, rgbeloader } from '../../../shard';
 import { buildingNameConfig } from '../../../config';
+import { WarehousePushResult } from 'backend';
 
 let animationTime = 0;
+
+const buildingMap = new Map<string, Object3D>();
 
 class BuildingContext extends Context {
     private building: Object3D[] = [];
@@ -158,8 +161,8 @@ class BuildingContext extends Context {
                         this.data.layer2Selection.push(child);
                         child.userData = buildingNameConfig[child.name];
                     }
+                    buildingMap.set(buildingNameConfig[child.name].code, child);
                 }
-
             });
 
             this.scene.add(gltfScene);
@@ -240,10 +243,25 @@ class BuildingContext extends Context {
             );
         });
 
+        const redTexture = await new Promise<Texture>((resolve, reject) => {
+            textureLoader.load(
+                `${publicPath}red.png`,
+                (texture) => {
+                    console.log('红色纹理加载完成');
+                    resolve(texture);
+                },
+                undefined,
+                (error) => {
+                    console.error('红色纹理加载失败:', error);
+                    reject(error);
+                }
+            );
+        });
+
         this.scene.updateMatrixWorld(true);
 
 
-   
+
         const createMarkerGroup = (building: Object3D, index: number, layer: Object3D) => {
             // 确保整个场景的世界矩阵是最新的（包括gltfScene的变换）
             building.updateMatrixWorld(true);
@@ -271,20 +289,23 @@ class BuildingContext extends Context {
             const spriteGroup = new Group();
 
             // 1. 创建蓝色水滴精灵
-            const blueSpriteMaterial = new SpriteMaterial({
+            const spriteMaterial = new SpriteMaterial({
                 map: blueTexture,
                 transparent: true,
                 alphaTest: 0.1
             });
-            const blueSprite = new Sprite(blueSpriteMaterial);
-            blueSprite.position.set(0, 0, 0); // 相对于组的原点
+            const sprite = new Sprite(spriteMaterial);
+            sprite.position.set(0, 0, 0); // 相对于组的原点
             // 减小缩放，场景已经 scale 10 倍，所以精灵缩放相应调整
-            blueSprite.scale.set(3, 3, 1);
+            sprite.scale.set(3, 3, 1);
+
+
 
             // 2. 创建文字标签精灵
-            const textTexture = this.createTextTexture(building.userData.name);
+            const blueTextTexture = this.createTextTexture(building.userData.name, '#0088ff');
+            const redTextTexture = this.createTextTexture(building.userData.name, '#ff0000');
             const textSpriteMaterial = new SpriteMaterial({
-                map: textTexture,
+                map: blueTextTexture,
                 transparent: true,
                 alphaTest: 0.1
             });
@@ -295,17 +316,31 @@ class BuildingContext extends Context {
             // 根据纹理的实际尺寸设置精灵大小（减小缩放）
             const textureScale = 0.3; // 减小缩放比例
             textSprite.scale.set(
-                (textTexture.image.width * textureScale) / 10,
-                (textTexture.image.height * textureScale) / 10,
+                (blueTextTexture.image.width * textureScale) / 10,
+                (blueTextTexture.image.height * textureScale) / 10,
                 1
             );
 
             // 将两个精灵添加到组中
-            spriteGroup.add(blueSprite);
+            spriteGroup.add(sprite);
             spriteGroup.add(textSprite);
 
             // 设置组的位置（相对于 layer 的本地坐标）
             spriteGroup.position.copy(localPosition);
+
+            const changeState = (state: boolean) => {
+                if (state) {
+                    spriteMaterial.map = blueTexture;
+                    textSpriteMaterial.map = blueTextTexture;
+                } else {
+                    spriteMaterial.map = redTexture;
+                    textSpriteMaterial.map = redTextTexture;
+                };
+                sprite.material.map.needsUpdate = true;
+                textSprite.material.map.needsUpdate = true;
+            }
+
+            building.userData.changeState = changeState;
 
             // 存储动画数据
             spriteGroup.userData = {
@@ -324,7 +359,7 @@ class BuildingContext extends Context {
         this.data.layer1Selection.forEach((building, index) => {
             createMarkerGroup(building, index, this.data.layer1);
         });
-        
+
         this.data.layer2Selection.forEach((building, index) => {
             createMarkerGroup(building, index, this.data.layer2);
         });
@@ -335,8 +370,17 @@ class BuildingContext extends Context {
         });
     }
 
+    updateBuildingState(data: WarehousePushResult): void {
+        Object.entries(data).forEach(([key, { thpass, temppass }]) => {
+            const building = buildingMap.get(key);
+            if (building) {
+                building.userData.changeState(thpass && temppass);
+            }
+        });
+    }
+
     // 创建文字纹理
-    createTextTexture(text: string): CanvasTexture {
+    createTextTexture(text: string, color: string): CanvasTexture {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
 
@@ -354,7 +398,7 @@ class BuildingContext extends Context {
         canvas.height = textHeight + padding * 2;
 
         // 设置背景
-        context.fillStyle = '#0088ff';
+        context.fillStyle = color;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         // 重新设置文字样式（因为canvas尺寸改变了）

@@ -303,7 +303,7 @@ export const getLatestReadingsByWarehouseFloor = async (warehouseFloorPrefix: st
     // 步骤2: 对每个不同的 location，找到该 location 的最新一条数据（按 recordtime DESC）
     // 使用子查询 + INNER JOIN 确保每个 location 只返回一条最新记录
     const [rows] = await pool.execute(
-      `SELECT t1.location, t1.temperature, t1.humidity, t1.recordtime, t1.remark
+      /*sql*/`SELECT t1.location, t1.temperature, t1.humidity, t1.recordtime, t1.remark, t1.temppass, t1.thpass
        FROM tdwd_scg_fqua_tempwet_collect t1
        INNER JOIN (
          SELECT location, MAX(recordtime) as max_recordtime
@@ -344,7 +344,9 @@ export const getLatestReadingsByWarehouseFloor = async (warehouseFloorPrefix: st
           temperature: row.temperature != null ? Number(Number(row.temperature).toFixed(2)) : 0,
           humidity: row.humidity != null ? Number(Number(row.humidity).toFixed(2)) : 0,
           data: dataStr,
-          remark
+          remark,
+          temppass: row.temppass === 'N' ? false : true,
+          thpass: row.thpass === 'N' ? false : true
         };
       }
     }

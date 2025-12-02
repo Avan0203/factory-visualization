@@ -8,12 +8,44 @@
  */
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { Plugin } from 'vite'
+import { readdir, unlink } from 'fs/promises'
+import { join } from 'path'
+
+// 递归遍历目录并删除 .blend 文件
+async function removeBlendFiles(dir: string): Promise<void> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await removeBlendFiles(fullPath)
+      } else if (entry.isFile() && entry.name.endsWith('.blend')) {
+        await unlink(fullPath)
+        console.log(`已排除: ${fullPath}`)
+      }
+    }
+  } catch (error) {
+    // 忽略错误
+  }
+}
+
+// 排除 .blend 文件的插件
+function excludeBlendFiles(): Plugin {
+  return {
+    name: 'exclude-blend-files',
+    closeBundle: async () => {
+      const distDir = join(process.cwd(), 'dist')
+      await removeBlendFiles(distDir)
+    }
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   // 根据部署环境设置base路径
   base: process.env.NODE_ENV === 'production' ? '/factory-visualization/' : './',
-  plugins: [vue()],
+  plugins: [vue(), excludeBlendFiles()],
   build: {
     // 输出目录
     outDir: 'dist',

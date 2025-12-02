@@ -12,7 +12,8 @@
             style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
             <el-form-item label="">
                 <el-date-picker v-model="queryForm.dataRange" type="daterange" range-separator="至"
-                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;" @change="dataChange" />
+                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;" 
+                    @visible-change="handleDatePickerVisibleChange" />
             </el-form-item>
             <el-form-item label="" style="margin-right: 10px;">
                 <el-select v-model="queryForm.warehouse" placeholder="仓库" style="width: 170px;"
@@ -96,10 +97,33 @@ const generateDateRange = () => {
 };
 
 
-const dataChange = (value) => {
-    if (value && value.length === 2) {
-        const startDate = formatDate(value[0]);
-        const endDate = formatDate(value[1]);
+// 记录上一次的日期范围，用于判断是否真的变化了
+const lastDataRange = ref<[string, string] | null>(null);
+
+// 日期选择器显示/隐藏变化处理
+const handleDatePickerVisibleChange = (visible: boolean) => {
+    // 只在日期选择器关闭时（visible 为 false）且值确实变化时才更新
+    if (!visible && queryForm.value.dataRange && queryForm.value.dataRange.length === 2) {
+        const currentRange: [string, string] = [
+            formatDate(queryForm.value.dataRange[0]),
+            formatDate(queryForm.value.dataRange[1])
+        ];
+        
+        // 检查日期范围是否真的变化了
+        if (!lastDataRange.value || 
+            lastDataRange.value[0] !== currentRange[0] || 
+            lastDataRange.value[1] !== currentRange[1]) {
+            lastDataRange.value = currentRange;
+            dataChange();
+        }
+    }
+}
+
+// 更新日期标签和图表
+const dataChange = () => {
+    if (queryForm.value.dataRange && queryForm.value.dataRange.length === 2) {
+        const startDate = formatDate(queryForm.value.dataRange[0]);
+        const endDate = formatDate(queryForm.value.dataRange[1]);
         dateLabels.value = generateDateLabels(startDate, endDate);
         // 更新图表x轴
         if (myChart) {
@@ -591,6 +615,8 @@ onMounted(async () => {
     // 设置默认日期范围
     const dateRange = generateDateRange();
     queryForm.value.dataRange = [dateRange.start, dateRange.end];
+    // 初始化时记录日期范围
+    lastDataRange.value = [dateRange.start, dateRange.end];
 
     // 等待DOM更新完成
     await nextTick();

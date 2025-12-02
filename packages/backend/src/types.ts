@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-30 00:59:13
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-30 15:47:11
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-02 14:50:18
  * @FilePath: /factory-visualization/packages/backend/src/types.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -73,6 +73,8 @@ export type SensorPushData = {
     humidity: number,
     data: string,      // 记录时间
     remark: 1 | 2      // 传感器类型：1-环境传感器，2-包芯传感器
+    temppass: boolean,  // 温度是否正常
+    thpass: boolean,    // 湿度是否正常
 }
 
 // SSE推送的完整数据格式 - 楼层

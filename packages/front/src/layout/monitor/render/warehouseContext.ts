@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-02 14:09:14
+ * @LastEditTime: 2025-12-02 15:11:13
  * @FilePath: /factory-visualization/src/layout/monitor/warehouseContext.ts
  * @Description: WarehouseContext - 仓库场景上下文
  */
@@ -137,17 +137,20 @@ class WarehouseContext extends Context {
 
     // 激活选择（选择对象）
     activate(object: Object3D): void {
-        if (!object) {
-            this.selectedGoods = null;
-            return;
-        }
+        this.deactivate();
+        if (!object) return;
         this.selectedGoods = object;
         console.log('选择对象:', object.name);
+        object.userData['setBillboardVisible'](true);
+
     }
 
     // 取消选择
     deactivate(): void {
         this.selectedGoods = null;
+        this.selection.forEach(goods => {
+            goods.userData['setBillboardVisible'](false);
+        });
         console.log('取消选择');
     }
 
@@ -160,7 +163,7 @@ class WarehouseContext extends Context {
         Object.entries(data).forEach(([location, sensorData]) => {
             const goods = locationMap.get(location);
             if(goods){
-                goods.userData['updateBillboard'](sensorData);
+                goods.userData['updateBillboard'](sensorData, location);
             }
         });
     }
@@ -189,18 +192,19 @@ class WarehouseContext extends Context {
         // 位置：goodMesh 的包围盒中心 + Y 轴高度的一半 + 偏移量
         const localPosition = new Vector3(
             center.x,
-            center.y + size.y / 2 + 0.5, // 在 goodMesh 上方 0.5 个单位（相对于 goodMesh 的本地坐标）
+            center.y + size.y / 2 + 2, // 在 goodMesh 上方 0.5 个单位（相对于 goodMesh 的本地坐标）
             center.z
         );
         
         // 创建初始文字纹理（显示空数据或默认值）
-        const initialTexture = this.createTextTexture('--°C --%', '#0088ff');
+        const initialTexture = this.createTextTexture(['温度：--°C', '湿度：--%', '位置：--', '时间：--'], '#0088ff');
         
         // 创建 Sprite Material
         const spriteMaterial = new SpriteMaterial({
             map: initialTexture,
             transparent: true,
             alphaTest: 0.1,
+            depthTest: false,
         });
         
         // 创建 Sprite
@@ -214,15 +218,43 @@ class WarehouseContext extends Context {
             (initialTexture.image.height * textureScale),
             1
         );
+
+        sprite.visible = false;
         
         // 在 goodMesh.userData 中添加 updateBillboard 方法，用于更新 billboard 的内容
-        goodMesh.userData['updateBillboard'] = (sensorData: SensorPushData) => {
+        goodMesh.userData['updateBillboard'] = (sensorData: SensorPushData, location: string) => {
             // 保存旧纹理引用，用于释放资源
             const oldTexture = spriteMaterial.map;
             
+            // 格式化时间
+            const formatTime = (timeStr: string): string => {
+                try {
+                    const date = new Date(timeStr);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const seconds = String(date.getSeconds()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                } catch {
+                    return timeStr;
+                }
+            };
+            
+            // 构建多行文本
+            const lines = [
+                `温度：${sensorData.temperature.toFixed(2)}°C`,
+                `湿度：${sensorData.humidity.toFixed(1)}%`,
+                `位置：${location}`,
+                `时间：${formatTime(sensorData.data)}`
+            ];
+            
+            // 根据 thpass && temppass 决定背景颜色
+            const backgroundColor = (sensorData.thpass && sensorData.temppass) ? '#0088ff' : '#ff0000';
+            
             // 根据传感器数据创建新的文字纹理
-            const text = `${sensorData.temperature.toFixed(1)}°C ${sensorData.humidity.toFixed(1)}%`;
-            const newTexture = this.createTextTexture(text, '#0088ff');
+            const newTexture = this.createTextTexture(lines, backgroundColor);
             
             // 更新 Sprite Material 的纹理
             spriteMaterial.map = newTexture;
@@ -240,13 +272,17 @@ class WarehouseContext extends Context {
                 oldTexture.dispose();
             }
         };
+
+        goodMesh.userData['setBillboardVisible'] = (visible: boolean) => {
+            sprite.visible = visible;
+        };
         
         // 返回 billboard
         return sprite;
     }
     
-    // 创建文字纹理
-    createTextTexture(text: string, color: string): CanvasTexture {
+    // 创建文字纹理（支持多行文本）
+    createTextTexture(lines: string[], color: string): CanvasTexture {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         
@@ -255,31 +291,39 @@ class WarehouseContext extends Context {
         }
         
         // 设置字体（用于测量文字尺寸）
-        context.font = 'bold 32px Arial';
+        const fontSize = 24;
+        const lineHeight = fontSize * 1.2; // 行高
+        context.font = `bold ${fontSize}px Arial`;
         
-        // 测量文字尺寸
-        const textMetrics = context.measureText(text);
-        const textWidth = textMetrics.width;
-        const textHeight = 32; // 字体大小
+        // 测量每行文字的宽度，找出最宽的一行
+        let maxWidth = 0;
+        lines.forEach(line => {
+            const textMetrics = context.measureText(line);
+            maxWidth = Math.max(maxWidth, textMetrics.width);
+        });
         
         // 设置画布尺寸，加上内边距
         const padding = 10;
-        canvas.width = textWidth + padding * 2;
-        canvas.height = textHeight + padding * 2;
+        const totalHeight = lines.length * lineHeight;
+        canvas.width = maxWidth + padding * 2;
+        canvas.height = totalHeight + padding * 2;
         
         // 注意：canvas 尺寸改变后，所有上下文属性都会被重置，需要重新设置
         // 重新设置字体（用于绘制）
-        context.font = 'bold 32px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
+        context.font = `bold ${fontSize}px Arial`;
+        context.textAlign = 'left';
+        context.textBaseline = 'top';
         
         // 绘制背景
         context.fillStyle = color;
         context.fillRect(0, 0, canvas.width, canvas.height);
         
-        // 绘制文字
+        // 绘制文字（多行）
         context.fillStyle = '#ffffff';
-        context.fillText(text, canvas.width / 2, canvas.height / 2);
+        lines.forEach((line, index) => {
+            const y = padding + index * lineHeight;
+            context.fillText(line, padding, y);
+        });
         
         // 创建纹理
         const texture = new CanvasTexture(canvas);

@@ -1,19 +1,25 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-17 01:01:46
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-02 13:45:52
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-12-12 01:37:31
  * @FilePath: /factory-visualization/src/layout/monitor/monitor.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <template>
     <div style="width: 100%; height: 100%; position: relative; overflow: hidden;" ref="containerRef">
-        <div style="position: absolute;top: 10px;left: 10px;">
+        <div class="header-container">
             <el-select v-if="isBuildingContext" v-model="path" placeholder="请选择厂区" style="width: 240px;"
                 @change="pathChange">
                 <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
-            <el-button type="primary" @click="backToBuilding" v-else>返回</el-button>
+            <div v-else class="breadcrumb-container">
+                <el-button type="primary" @click="backToBuilding">返回</el-button>
+                <el-breadcrumb :separator-icon="ArrowRight">
+                    <el-breadcrumb-item v-for="item in breadcrumbList" :key="item">{{ item }}</el-breadcrumb-item>
+                </el-breadcrumb>
+            </div>
+
         </div>
 
         <div v-if="showBuildingInfo" class="building-info">
@@ -29,12 +35,13 @@
 </template>
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
-import { ElSelect, ElOption } from 'element-plus';
+import { ElSelect, ElOption, ElBreadcrumb, ElBreadcrumbItem } from 'element-plus';
+import { ArrowRight } from '@element-plus/icons-vue';
 import { Render } from './render/render';
 import BuildingContext from './render/buildingContext';
 import WarehouseContext from './render/warehouseContext';
 import { Mesh } from 'three';
-import { buildingNameConfig, layerConfig } from '../../config';
+import { buildingNameConfig } from '../../config';
 import { useSensorSSE } from '../../composables/useSensorSSE';
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -58,6 +65,8 @@ let currentFloor = '-1';
 
 const showBuildingInfo = ref(false);
 const selectedFloor = ref<number | null>(null);
+
+const breadcrumbList = ref<string[]>([]);
 
 const path = ref<0 | 1>(0);
 
@@ -116,6 +125,7 @@ onMounted(() => {
         });
         render.on('unselect', () => {
             showBuildingInfo.value = false;
+            breadcrumbList.value = [];
             currentBuilding = '-1';
             currentFloor = '-1';
             // 断开SSE连接
@@ -146,17 +156,22 @@ const panelClick = async (e: MouseEvent) => {
         console.log(id);
         render.switchContext(warehouseContext);
         e.stopPropagation();
-        showBuildingInfo.value = false;
         isBuildingContext.value = false;
         currentFloor = id.toString();
         console.log('currentFloor: ', currentFloor);
         const layer = WarehouseContext.getLayer(currentBuilding, currentFloor);
         console.log('layer: ', layer);
         warehouseContext.switchLayer(layer);
+        //清空选择
+        render.clearSelection();
 
         // 建立SSE连接，推送该楼层的传感器数据
         if (currentBuilding !== '-1' && currentFloor !== '-1') {
             console.log('建立SSE连接，仓库:', currentBuilding, '楼层:', currentFloor);
+            breadcrumbList.value = [];
+            breadcrumbList.value.push(path.value === 0 ? '苏山头厂区' : '新厂区');
+            breadcrumbList.value.push(`${+currentBuilding}号仓库`);
+            breadcrumbList.value.push(`第${currentFloor}层`);
             await connect({
                 type: 'floor',
                 warehouse: currentBuilding,
@@ -263,5 +278,24 @@ onBeforeUnmount(() => {
     background: linear-gradient(135deg, rgba(255, 193, 7, 0.35) 0%, rgba(255, 152, 0, 0.4) 100%);
     border-color: rgba(255, 193, 7, 0.8);
     box-shadow: 0 0 16px rgba(255, 193, 7, 0.5), 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.header-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.breadcrumb-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
 }
 </style>

@@ -245,6 +245,12 @@ class Render extends EventListener implements IRender {
         });
     }
 
+    clearSelection(): void {
+        if (!this._currentContext) return;
+        this._currentContext.deactivate();
+        this.outlinePass.selectedObjects = [];
+    }
+
     dispose(): void {
         // 停止渲染循环
         this.renderer.setAnimationLoop(null);

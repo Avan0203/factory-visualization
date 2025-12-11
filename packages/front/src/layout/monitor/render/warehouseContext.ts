@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
- * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-02 15:11:13
+ * @LastEditors: wuyifan 1208097313@qq.com
+ * @LastEditTime: 2025-12-12 01:41:12
  * @FilePath: /factory-visualization/src/layout/monitor/warehouseContext.ts
  * @Description: WarehouseContext - 仓库场景上下文
  */
@@ -18,6 +18,7 @@ import {
     CanvasTexture,
     Box3,
     Vector3,
+    MOUSE,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Context } from './context';
@@ -33,11 +34,12 @@ class WarehouseContext extends Context {
     private layer: {
         [key: string]: Object3D;
     };
+    controls: any;
     constructor(renderer: WebGLRenderer) {
         super(renderer);
         // 使用默认的 Y 轴向上（不需要设置 camera.up）
         // 调整相机位置：Y 轴向上，相机在 Y 轴上方，看向原点
-        this.camera.position.set(10, 20, 0);
+        this.camera.position.set(12, 17, 0);
         this.camera.lookAt(0, 0, 0);
         this.camera.updateProjectionMatrix();
 
@@ -52,13 +54,14 @@ class WarehouseContext extends Context {
     }
 
     launch(controls: OrbitControls): void {
-        // 限制旋转角度
-        // 限制缩放范围
-        controls.minZoom = 0.3;
-        controls.maxZoom = 3;
-
         controls.target.set(0, 0, 0);
-        controls.object.position.set(10, 20, 0);
+        controls.object.position.set(12, 17, 0);
+        controls.enableRotate = false;
+        controls.maxZoom = 1;
+        controls.minZoom = 0.5;
+        //左键移动
+        controls.enablePan = true;
+        controls.mouseButtons.LEFT = MOUSE.PAN;
 
         super.launch(controls);
     }

@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-30 01:41:44
+ * @LastEditTime: 2025-12-14 11:28:57
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -79,22 +79,9 @@ import { Refresh, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { querySensorData } from '../../api/sensor';
 import { warehouseOptions, floorOptions, dir1Options, dir2Options, locationOptions, buildingNameConfig } from '../../config';
+import { getDateRange } from '../../shard';
 const chartRef = ref(null);
 let myChart = null;
-
-// 生成日期范围（今天前15天到后15天）
-const generateDateRange = () => {
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 15);
-    const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 15);
-
-    return {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0]
-    };
-};
 
 
 // 记录上一次的日期范围，用于判断是否真的变化了
@@ -174,7 +161,6 @@ const directionOptions = computed(() => {
     return +queryForm.value.warehouse < 46 ? dir1Options : dir2Options;
 })
 
-console.log(locationOptions);
 
 // 仓库变化时，清空楼层、方向、货位
 const handleWarehouseChange = () => {
@@ -210,8 +196,8 @@ const initChart = () => {
         myChart = echarts.init(chartRef.value);
 
         // 生成日期标签（使用默认日期范围）
-        const dateRange = generateDateRange();
-        dateLabels.value = generateDateLabels(dateRange.start, dateRange.end);
+        const dateRange = getDateRange();
+        dateLabels.value = generateDateLabels(dateRange[0], dateRange[1]);
 
         const option = {
             title: {
@@ -613,10 +599,10 @@ const updateChartData = () => {
 // 组件挂载时初始化图表
 onMounted(async () => {
     // 设置默认日期范围
-    const dateRange = generateDateRange();
-    queryForm.value.dataRange = [dateRange.start, dateRange.end];
+    const dateRange = getDateRange();
+    queryForm.value.dataRange = [dateRange[0], dateRange[1]];
     // 初始化时记录日期范围
-    lastDataRange.value = [dateRange.start, dateRange.end];
+    lastDataRange.value = [dateRange[0], dateRange[1]];
 
     // 等待DOM更新完成
     await nextTick();

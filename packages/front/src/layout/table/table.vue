@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:33
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-30 16:13:31
+ * @LastEditTime: 2025-12-14 11:27:06
  * @FilePath: /factory-visualization/src/layout/table.vue
  * @Description: 报表统计页面
 -->
@@ -16,7 +16,8 @@
             end-placeholder="结束日期" style="width: 220px;" :unlink-panels="true" />
         </el-form-item>
         <el-form-item label="">
-          <el-select v-model="queryForm.warehouse" placeholder="仓库" class="form-item-input" clearable style="width: 170px;">
+          <el-select v-model="queryForm.warehouse" placeholder="仓库" class="form-item-input" clearable
+            style="width: 170px;">
             <el-option v-for="item in warehouseOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
@@ -78,20 +79,14 @@ import { ElMessage } from 'element-plus'
 import { warehouseOptions, floorOptions, dir1Options, dir2Options, locationOptions } from '../../config'
 import { queryTableData } from '../../api/sensor'
 import type { TableRow } from 'backend'
+import { getDateRange } from '../../shard'
 
-// 获取今天的日期字符串（YYYY-MM-DD格式）
-const getTodayDate = (): string => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+
 
 // 查询表单
-const todayDate = getTodayDate()
+const [todayAgo, todayDate] = getDateRange()
 const queryForm = ref({
-  dataRange: [todayDate, todayDate],
+  dataRange: [todayDate, todayAgo],
   time: '',
   warehouse: '',
   floor: '',
@@ -140,10 +135,10 @@ const directionOptions = computed(() => {
 // 加载数据
 const loadData = async () => {
   if (loading.value) return
-  
+
   try {
     loading.value = true
-    
+
     const params = {
       warehouse: queryForm.value.warehouse,
       floor: queryForm.value.floor,
@@ -156,10 +151,10 @@ const loadData = async () => {
     }
 
     const response = await queryTableData(params)
-    
+
     tableData.value = response.data
     total.value = response.total
-    
+
     // 如果当前页超过总页数，重置到第一页
     if (pagination.currentPage > response.totalPage && response.totalPage > 0) {
       pagination.currentPage = 1

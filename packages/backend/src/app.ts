@@ -22,7 +22,31 @@ const app = express();
 const port = process.env.PORT || 3500;
 
 // 允许跨域
-app.use(cors());
+const corsOptions: cors.CorsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // 允许的源列表（开发环境）
+    const allowedOrigins = [
+      'http://localhost:3200',  // 前端开发服务器
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:3200',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
+    ];
+    
+    // 开发环境：允许所有本地源，或者允许没有origin的请求（如Postman、curl等）
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // 临时允许所有，生产环境应改为 callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 // 解析JSON请求
 app.use(express.json());
 

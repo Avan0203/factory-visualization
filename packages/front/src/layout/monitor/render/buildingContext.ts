@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-02 13:25:06
+ * @LastEditTime: 2025-12-17 16:09:37
  * @FilePath: /factory-visualization/src/layout/monitor/buildingContext.ts
  * @Description: BuildingContext - 建筑场景上下文
  */
@@ -24,7 +24,9 @@ import {
     Box3,
     CanvasTexture,
     Object3D,
-    Texture
+    Texture,
+    LinearFilter,
+    ClampToEdgeWrapping
 } from 'three';
 import { Context } from './context';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -233,6 +235,10 @@ class BuildingContext extends Context {
                 `${publicPath}blue.png`,
                 (texture) => {
                     console.log('蓝色纹理加载完成');
+                    texture.generateMipmaps = false;
+                    texture.minFilter = LinearFilter; // 或 NearestFilter
+                    texture.wrapS = ClampToEdgeWrapping;
+                    texture.wrapT = ClampToEdgeWrapping;
                     resolve(texture);
                 },
                 undefined,
@@ -248,6 +254,10 @@ class BuildingContext extends Context {
                 `${publicPath}red.png`,
                 (texture) => {
                     console.log('红色纹理加载完成');
+                    texture.generateMipmaps = false;
+                    texture.minFilter = LinearFilter; // 或 NearestFilter
+                    texture.wrapS = ClampToEdgeWrapping;
+                    texture.wrapT = ClampToEdgeWrapping;
                     resolve(texture);
                 },
                 undefined,
@@ -298,7 +308,6 @@ class BuildingContext extends Context {
             sprite.position.set(0, 0, 0); // 相对于组的原点
             // 减小缩放，场景已经 scale 10 倍，所以精灵缩放相应调整
             sprite.scale.set(3, 3, 1);
-
 
 
             // 2. 创建文字标签精灵
@@ -381,6 +390,7 @@ class BuildingContext extends Context {
 
     // 创建文字纹理
     createTextTexture(text: string, color: string): CanvasTexture {
+        console.log('createTextTexture: ', text, color);
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
 
@@ -412,7 +422,10 @@ class BuildingContext extends Context {
 
         // 创建纹理
         const texture = new CanvasTexture(canvas);
-        texture.needsUpdate = true;
+        texture.generateMipmaps = false;
+        texture.minFilter = LinearFilter; // 或 NearestFilter
+        texture.wrapS = ClampToEdgeWrapping;
+        texture.wrapT = ClampToEdgeWrapping;
 
         return texture;
     }

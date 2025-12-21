@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-14 11:28:57
+ * @LastEditTime: 2025-12-22 01:04:43
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -11,8 +11,8 @@
         <el-form :model="queryForm" inline
             style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
             <el-form-item label="">
-                <el-date-picker v-model="queryForm.dataRange" type="daterange" range-separator="至"
-                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;" 
+                <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
+                    start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;"
                     @visible-change="handleDatePickerVisibleChange" />
             </el-form-item>
             <el-form-item label="" style="margin-right: 10px;">
@@ -77,28 +77,29 @@ import { onMounted, onUnmounted, ref, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { Refresh, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { querySensorData } from '../../api/sensor';
-import { warehouseOptions, floorOptions, dir1Options, dir2Options, locationOptions, buildingNameConfig } from '../../config';
-import { getDateRange } from '../../shard';
+import { querySensorData } from '@/api';
+import { warehouseOptions, floorOptions, dir1Options, dir2Options, locationConfig1, locationConfig2, locationConfig3, locationConfig4, locationConfig5, locationConfig6, buildingNameConfig } from '@/config';
+import { getDateRange } from '@/shard';
+import { useDateRange } from '@/composables';
 const chartRef = ref(null);
 let myChart = null;
 
-
+const { dateRange } = useDateRange();
 // 记录上一次的日期范围，用于判断是否真的变化了
 const lastDataRange = ref<[string, string] | null>(null);
 
 // 日期选择器显示/隐藏变化处理
 const handleDatePickerVisibleChange = (visible: boolean) => {
     // 只在日期选择器关闭时（visible 为 false）且值确实变化时才更新
-    if (!visible && queryForm.value.dataRange && queryForm.value.dataRange.length === 2) {
+    if (!visible && dateRange.value[0] && dateRange.value[1]) {
         const currentRange: [string, string] = [
-            formatDate(queryForm.value.dataRange[0]),
-            formatDate(queryForm.value.dataRange[1])
+            formatDate(dateRange.value[0]),
+            formatDate(dateRange.value[1])
         ];
-        
+
         // 检查日期范围是否真的变化了
-        if (!lastDataRange.value || 
-            lastDataRange.value[0] !== currentRange[0] || 
+        if (!lastDataRange.value ||
+            lastDataRange.value[0] !== currentRange[0] ||
             lastDataRange.value[1] !== currentRange[1]) {
             lastDataRange.value = currentRange;
             dataChange();
@@ -108,9 +109,9 @@ const handleDatePickerVisibleChange = (visible: boolean) => {
 
 // 更新日期标签和图表
 const dataChange = () => {
-    if (queryForm.value.dataRange && queryForm.value.dataRange.length === 2) {
-        const startDate = formatDate(queryForm.value.dataRange[0]);
-        const endDate = formatDate(queryForm.value.dataRange[1]);
+    if (dateRange.value[0] && dateRange.value[1]) {
+        const startDate = formatDate(dateRange.value[0]);
+        const endDate = formatDate(dateRange.value[1]);
         dateLabels.value = generateDateLabels(startDate, endDate);
         // 更新图表x轴
         if (myChart) {
@@ -137,12 +138,11 @@ const generateDateLabels = (startDate: string, endDate: string) => {
 };
 
 // 查询表单数据
-const queryForm = ref({
-    dataRange: [],
+const queryForm = ref({    
     warehouse: '01', // 楼号（buildingCode）2
     floor: '1', // 楼层索引（0, 1, 2...）
-    direction: '01', // 方向编码（01, 02）
-    location: '01', // 货位号
+    direction: '00', // 方向编码（01, 02）
+    location: '00', // 货位号
     queryType: 'temperature',
     sensorType: '1'
 });
@@ -150,15 +150,22 @@ const queryForm = ref({
 // 方向编码转换为可读名称
 const getDirectionName = (directionCode: string, buildingCode: string) => {
     if (Number(buildingCode) < 46) {
-        return directionCode === '01' ? '东库' : '西库';
+        if (buildingCode === '08') {
+            return '全部';
+        } else {
+            return directionCode === '01' ? '东库' : '西库';
+        }
     } else {
         return directionCode === '01' ? '南库' : '北库';
     }
 };
 
+const dirOptions = [[...dir1Options, { label: '全部', value: '00' }], [...dir2Options, { label: '全部', value: '00' }]];
+
+
 // 库位（方向）选项
 const directionOptions = computed(() => {
-    return +queryForm.value.warehouse < 46 ? dir1Options : dir2Options;
+    return +queryForm.value.warehouse < 46 ? dirOptions[0] : dirOptions[1];
 })
 
 
@@ -178,6 +185,23 @@ const handleFloorChange = () => {
 const handleDirectionChange = () => {
     queryForm.value.location = '';
 };
+
+const locationOptions = computed(() => {
+    //苏山头6号库1-5层两边/苏山头1号库2层东边
+    if (['02', '03', '04', '05', '06', '07'].includes(queryForm.value.warehouse) || (queryForm.value.warehouse === '01' && queryForm.value.floor === '2' && queryForm.value.direction === '01')) {
+        return locationConfig1;
+    } else if (queryForm.value.warehouse === '01' && queryForm.value.floor === '2' && queryForm.value.direction === '02') {
+        return locationConfig3;
+    } else if (queryForm.value.warehouse === '01') {
+        return locationConfig2;
+    } else if (queryForm.value.warehouse === '08') {
+        return locationConfig4;
+    } else if (['46', '47', '48'].includes(queryForm.value.warehouse)) {
+        return locationConfig5;
+    } else if (['49'].includes(queryForm.value.warehouse)) {
+        return locationConfig6;
+    }
+});
 
 // 标签数据
 const tags = ref([]);
@@ -252,7 +276,7 @@ const initChart = () => {
                 axisLabel: {
                     rotate: 45,
                     interval: 0,
-                    formatter: function(value: string) {
+                    formatter: function (value: string) {
                         return value;
                     }
                 },
@@ -316,7 +340,7 @@ const mapDataToDateLabels = (data: any[], queryType: string, startDate: string, 
     const end = new Date(endDate);
     const dateStrings = [];
     const current = new Date(start);
-    
+
     while (current <= end) {
         dateStrings.push(formatDate(current));
         current.setDate(current.getDate() + 1);
@@ -389,8 +413,11 @@ const handleAdd = async () => {
             sensorType: queryForm.value.sensorType
         };
 
-        const sensorData = await querySensorData(queryParams);
-        console.log('sensorData: ', sensorData);
+        const sensorDataArray = await querySensorData(queryParams);
+        console.log('sensorDataArray: ', sensorDataArray);
+
+        // 从返回的数组的数组中取第一个元素（因为当前只查询一个item）
+        const sensorData = sensorDataArray && sensorDataArray.length > 0 ? sensorDataArray[0] : [];
 
         // 获取日期范围
         const startDate = formatDate(queryForm.value.dataRange[0]);
@@ -430,7 +457,7 @@ const handleAdd = async () => {
 
         // 根据查询类型确定使用哪个Y轴：温度用左轴(0)，湿度用右轴(1)
         const yAxisIndex = queryForm.value.queryType === 'temperature' ? 0 : 1;
-        
+
         const newSeries = {
             name: tagName,
             type: 'line',
@@ -455,6 +482,7 @@ const handleAdd = async () => {
         ElMessage.error('查询数据失败，请稍后重试');
     }
 };
+
 
 // 标签删除方法
 const handleTagClose = (tag) => {
@@ -487,16 +515,16 @@ const handleReset = () => {
         queryType: 'temperature',
         sensorType: '1'
     };
-    
+
     // 清空标签
     tags.value = [];
-    
+
     // 清空图表数据
     chartData.value.series = [];
-    
+
     // 更新图表
     updateChartData();
-    
+
     ElMessage.success('已清空');
 };
 
@@ -558,7 +586,7 @@ const updateChartData = () => {
             axisLabel: {
                 rotate: 45,
                 interval: 0,
-                formatter: function(value: string) {
+                formatter: function (value: string) {
                     return value;
                 }
             },

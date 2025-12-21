@@ -2,13 +2,13 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-16 00:57:27
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-30 01:03:51
+ * @LastEditTime: 2025-12-21 11:13:24
  * @FilePath: /sensor-backend/src/routes/sensorRoutes.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import express from 'express';
-import { getLatestXuzhouReading, getRecentXuzhouReadings, querySensorData, queryTableData } from '../services/sensorService';
-import { QuerySensorParams, QueryTableParams, SubscribeParams, SubscribeFloorParams, SubscribeWarehouseParams } from '../types';
+import { querySensorData, queryTableData } from '../services/sensorService';
+import { QuerySensorParams, QueryTableParams, SubscribeParams, SubscribeFloorParams, SubscribeWarehouseParams, SensorItem } from '../types';
 import sseService from '../services/sseService';
 
 const router = express.Router();
@@ -17,23 +17,32 @@ const router = express.Router();
 
 
 // 查询传感器数据
-router.get('/query', async (req, res) => {
+router.post('/query', async (req, res) => {
   try {
-    const { code, startDate, endDate, query, sensor } = req.query;
+    const { startDate, endDate, items } = req.body;
 
-    if (!code || !startDate || !endDate) {
-      return res.status(400).json({ message: '缺少必要参数：code, startDate, endDate' });
+    // 验证必要参数
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: '缺少必要参数：startDate, endDate' });
     }
 
-    const params: QuerySensorParams = {
-      code: code as string,
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: '缺少必要参数：items (必须为非空数组)' });
+    }
+
+    // 验证每个item的必要参数
+    for (const item of items) {
+      if (!item.code || !item.query || item.sensor === undefined) {
+        return res.status(400).json({ message: '缺少必要参数：每个item必须包含 code, query, sensor' });
+      }
+      item.sensor = item.sensor ? +item.sensor as 1 | 2 : 1;
+    }
+
+    const data = await querySensorData({
       startDate: startDate as string,
       endDate: endDate as string,
-      query: query as 'temperature' | 'humidity',
-      sensor: sensor ? parseInt(sensor as string) as 1 | 2 : 1
-    };
-
-    const data = await querySensorData(params);
+      items: items as SensorItem[]
+    });
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: '查询数据失败', error: (error as Error).message });

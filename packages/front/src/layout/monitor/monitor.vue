@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-17 01:01:46
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-12 01:37:31
+ * @LastEditTime: 2025-12-22 00:52:53
  * @FilePath: /factory-visualization/src/layout/monitor/monitor.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -41,8 +41,8 @@ import { Render } from './render/render';
 import BuildingContext from './render/buildingContext';
 import WarehouseContext from './render/warehouseContext';
 import { Mesh } from 'three';
-import { buildingNameConfig } from '../../config';
-import { useSensorSSE } from '../../composables/useSensorSSE';
+import { buildingNameConfig } from '@/config';
+import { useSensorSSE } from '@/composables';
 
 const containerRef = ref<HTMLElement | null>(null);
 let render: Render;

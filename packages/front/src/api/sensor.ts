@@ -35,24 +35,26 @@ const formatDate = (date: string | Date): string => {
 /**
  * 查询传感器数据
  */
-export const querySensorData = async (params: any): Promise<QuerySensorResult[]> => {
-  const { warehouse, floor, direction, location, dataRange, queryType, sensorType } = params;
+export const querySensorData = async (params: any): Promise<QuerySensorResult[][]> => {
+  const { dataRange, items } = params;
 
   // 格式化日期为 YYYY-MM-dd 格式
   const startDate = formatDate(dataRange[0]);
   const endDate = formatDate(dataRange[1]);
 
-  const queryParams: QuerySensorParams = {
+  const sensorItems = items.map(({ warehouse, floor, direction, location, queryType, sensorType }) => ({
     code: `${warehouse}-${floor}-${direction}-${location}`,
-    startDate,
-    endDate,
     query: queryType,
     sensor: sensorType,
+  }));
+
+  const queryParams: QuerySensorParams = {
+    startDate,
+    endDate,
+    items: sensorItems,
   }
 
-  const result = await request.get<QuerySensorResult[]>('/api/sensors/query', {
-    params: queryParams
-  });
+  const result = await request.post<QuerySensorResult[][]>('/api/sensors/query', queryParams);
 
   return result;
 };

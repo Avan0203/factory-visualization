@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:33
  * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-14 11:27:06
+ * @LastEditTime: 2025-12-22 01:11:14
  * @FilePath: /factory-visualization/src/layout/table.vue
  * @Description: 报表统计页面
 -->
@@ -12,7 +12,7 @@
     <div class="query-panel">
       <el-form :inline="true" :model="queryForm" class="query-form">
         <el-form-item label="">
-          <el-date-picker v-model="queryForm.dataRange" type="daterange" range-separator="至" start-placeholder="开始日期"
+          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
             end-placeholder="结束日期" style="width: 220px;" :unlink-panels="true" />
         </el-form-item>
         <el-form-item label="">
@@ -33,12 +33,12 @@
               :value="option.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="" style="margin-right: 10px;">
+        <!-- <el-form-item label="" style="margin-right: 10px;">
           <el-select v-model="queryForm.location" placeholder="货位" style="width: 100px;">
             <el-option v-for="option in locationOptions" :key="option.value" :label="option.label"
               :value="option.value" />
           </el-select>
-        </el-form-item>
+        </el-form-item> -->
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleQuery">
             统计
@@ -74,19 +74,17 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { Search } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { warehouseOptions, floorOptions, dir1Options, dir2Options, locationOptions } from '../../config'
-import { queryTableData } from '../../api/sensor'
-import type { TableRow } from 'backend'
-import { getDateRange } from '../../shard'
+import { Search } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import type { TableRow } from 'backend';
+import { warehouseOptions, floorOptions, dir1Options, dir2Options } from '@/config';
+import { queryTableData } from '@/api';
+import { useDateRange } from '@/composables';
 
-
+const { dateRange } = useDateRange();
 
 // 查询表单
-const [todayAgo, todayDate] = getDateRange()
 const queryForm = ref({
-  dataRange: [todayDate, todayAgo],
   time: '',
   warehouse: '',
   floor: '',
@@ -144,7 +142,7 @@ const loadData = async () => {
       floor: queryForm.value.floor,
       direction: queryForm.value.direction,
       location: queryForm.value.location,
-      dataRange: queryForm.value.dataRange,
+      dateRange: dateRange.value,
       pageSize: pagination.pageSize,
       pageNum: pagination.currentPage,
       sensorType: Number(queryForm.value.sensorType) as 1 | 2
@@ -173,11 +171,11 @@ const loadData = async () => {
 
 // 校验表单
 const validateForm = (): boolean => {
-  if (!queryForm.value.dataRange || !queryForm.value.dataRange[0]) {
+  if (!dateRange.value[0]) {
     ElMessage.warning('请选择开始日期')
     return false
   }
-  if (!queryForm.value.dataRange[1]) {
+  if (!dateRange.value[1]) {
     ElMessage.warning('请选择结束日期')
     return false
   }
@@ -212,12 +210,6 @@ const handleQuery = async () => {
   await loadData()
 }
 
-// 导出处理
-const handleExport = () => {
-  // TODO: 实现导出功能
-  // await exportReportData(queryForm)
-  console.log('导出功能待实现', queryForm)
-}
 
 // 分页大小改变
 const handleSizeChange = async (size: number) => {

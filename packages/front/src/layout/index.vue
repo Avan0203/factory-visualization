@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-04-17 01:06:23
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-11-29 21:59:41
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-23 13:28:18
  * @FilePath: /factory-visualization/src/layout/index.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -12,7 +12,7 @@
             <el-row>
                 <el-col :span="4" class="header-title">
                     <span>
-                        工厂可视化系统
+                        徐州仓库可视化系统
                     </span>
                 </el-col>
                 <el-col :span="12">
@@ -22,12 +22,6 @@
                         <el-menu-item index="2">统计分析</el-menu-item>
                         <el-menu-item index="3">表格展示</el-menu-item>
                     </el-menu>
-                </el-col>
-                <el-col :span="8" class="button-list">
-                    <el-button type="primary" :icon="Refresh">警报复位</el-button>
-                    <el-button type="primary" :icon="Operation" />
-                    <el-button type="primary" :icon="Setting" />
-                    <el-button type="danger" :icon="SwitchButton" @click="handleLogout">退出系统</el-button>
                 </el-col>
             </el-row>
 
@@ -47,9 +41,9 @@
 </template>
 
 <script setup lang="ts">
-import { ElMenu, ElMenuItem, ElContainer, ElHeader, ElMain, ElCol, ElRow, ElButton, ElMessage, ElMessageBox } from 'element-plus';
-import { Operation, Setting, SwitchButton, Refresh } from '@element-plus/icons-vue';
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, watch, nextTick } from 'vue';
+import { ElMenu, ElMenuItem, ElContainer, ElHeader, ElMain, ElCol, ElRow } from 'element-plus';
+
 import chart from './chart/chart.vue';
 import tableRef from './table/table.vue';
 import monitor from './monitor/monitor.vue';
@@ -73,33 +67,4 @@ watch(activeIndex, async (newIndex) => {
         }, 200);
     }
 });
-
-// 处理退出登录
-const handleLogout = () => {
-    ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-    }).then(() => {
-        // 清除本地存储的认证信息
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('userInfo');
-        
-        // 跳转到登录页面
-        
-        ElMessage.success('已退出登录');
-    }).catch(() => {
-        // 用户取消退出
-    });
-}
-
-// 检查认证状态
-const checkAuth = () => {
-    // NOTE：暂时跳过认证检查
-}
-
-onMounted(() => {
-    checkAuth();
-});
-
 </script>

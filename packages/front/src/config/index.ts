@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan wuyifan@udschina.com
  * @Date: 2025-11-26 16:30:26
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-21 22:56:22
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-23 10:56:57
  * @FilePath: \factory-visualization\src\config\inedex.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -110,12 +110,6 @@ export const warehouseOptions = Object.entries(warehouseConfig).map(([key, value
     label: value.name,
     value: key
 }));
-
-export const timeOptions = Array.from({ length: 24 }, (_, i) => ({
-    value: i,
-    label: `${i}点`
-}))
-
 
 
 const wrapperFunc = (direction: string, goods: string) => {
@@ -343,40 +337,4 @@ export const goodsConfig = {
     'goods144': wrapperFunc5('02','09'),
 }
 
-const locationAll = { label: '全部', value: '00' };
-//苏山头6号库1-5层两边/苏山头1号库2层东边
-export const locationConfig1 = Array.from({ length: 10 }, (_, index) => ({
-    label: `${index + 1}号位`,
-    value: (index + 1).toString().padStart(2, '0')
-})).unshift(locationAll);
-
-// 苏山头1号库1345层两边
-export const locationConfig2 = Array.from({ length: 8 }, (_, index) => ({
-    label: `${index + 1}号位`,
-    value: (index + 1).toString().padStart(2, '0')
-})).unshift(locationAll);
-
-//苏山头1号库2层西边
-export const locationConfig3 = Array.from({ length: 12 }, (_, index) => ({
-    label: `${index + 1}号位`,
-    value: (index + 1).toString().padStart(2, '0')
-})).unshift(locationAll);
-
-
-//苏山头8号库1-5层
-export const locationConfig4 = Array.from({ length: 11 }, (_, index) => ({
-    label: `${index + 1}号位`,
-    value: (index + 1).toString().padStart(2, '0')
-})).unshift(locationAll);
-
-// 新厂区1-3号楼1-5层
-export const locationConfig5 = Array.from({ length: 19 }, (_, index) => ({
-    label: `${index + 1}号位`,
-    value: (index + 1).toString().padStart(2, '0')
-})).unshift(locationAll);
-
-// 新厂区4号楼1-5层
-export const locationConfig6 = Array.from({ length: 15 }, (_, index) => ({
-    label: `${index + 1}号位`,
-    value: (index + 1).toString().padStart(2, '0')
-})).unshift(locationAll);
+export const totalOption = { label: '全部', value: '00' };

@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:33
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-22 01:11:14
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-23 13:25:33
  * @FilePath: /factory-visualization/src/layout/table.vue
  * @Description: 报表统计页面
 -->
@@ -16,29 +16,29 @@
             end-placeholder="结束日期" style="width: 220px;" :unlink-panels="true" />
         </el-form-item>
         <el-form-item label="">
-          <el-select v-model="queryForm.warehouse" placeholder="仓库" class="form-item-input" clearable
+          <el-select v-model="warehouseForm.warehouse" placeholder="仓库" class="form-item-input" clearable @change="handleWarehouseChange"
             style="width: 170px;">
             <el-option v-for="item in warehouseOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="" style="margin-right: 10px;">
-          <el-select v-model="queryForm.floor" placeholder="楼层" style="width: 100px;" @change="handleFloorChange">
+          <el-select v-model="warehouseForm.floor" placeholder="楼层" style="width: 100px;" @change="handleFloorChange">
             <el-option v-for="option in floorOptions" :key="option.value" :label="option.label" :value="option.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="" style="margin-right: 10px;">
-          <el-select v-model="queryForm.direction" placeholder="库位" style="width: 80px;"
+          <el-select v-model="warehouseForm.direction" placeholder="库位" style="width: 80px;"
             @change="handleDirectionChange">
             <el-option v-for="option in directionOptions" :key="option.value" :label="option.label"
               :value="option.value" />
           </el-select>
         </el-form-item>
-        <!-- <el-form-item label="" style="margin-right: 10px;">
-          <el-select v-model="queryForm.location" placeholder="货位" style="width: 100px;">
+        <el-form-item label="" style="margin-right: 10px;">
+          <el-select v-model="warehouseForm.location" placeholder="货位" style="width: 100px;">
             <el-option v-for="option in locationOptions" :key="option.value" :label="option.label"
               :value="option.value" />
           </el-select>
-        </el-form-item> -->
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleQuery">
             统计
@@ -73,41 +73,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import type { TableRow } from 'backend';
-import { warehouseOptions, floorOptions, dir1Options, dir2Options } from '@/config';
+import { warehouseOptions, floorOptions } from '@/config';
 import { queryTableData } from '@/api';
-import { useDateRange } from '@/composables';
+import { useDateRange, useWareHouse } from '@/composables';
 
 const { dateRange } = useDateRange();
 
+const { warehouseForm, directionOptions, locationOptions } = useWareHouse();
+
 // 查询表单
 const queryForm = ref({
-  time: '',
-  warehouse: '',
-  floor: '',
-  direction: '',
-  location: '',
   sensorType: '1'
 })
 
 // 仓库变化时，清空楼层、方向、货位
 const handleWarehouseChange = () => {
-  queryForm.value.floor = '';
+  warehouseForm.value.floor = '';
   handleFloorChange();
 };
 
 // 楼层变化时，清空方向、货位
 const handleFloorChange = () => {
-  queryForm.value.direction = '';
+  warehouseForm.value.direction = '';
   handleDirectionChange();
 };
 
 // 方向变化时，清空货位
 const handleDirectionChange = () => {
-  queryForm.value.location = '';
+  warehouseForm.value.location = '';
 };
 
 // 表格数据
@@ -125,11 +122,6 @@ const total = ref(0)
 // 加载状态
 const loading = ref(false)
 
-// 库位（方向）选项
-const directionOptions = computed(() => {
-  return +queryForm.value.warehouse < 46 ? dir1Options : dir2Options;
-})
-
 // 加载数据
 const loadData = async () => {
   if (loading.value) return
@@ -138,10 +130,10 @@ const loadData = async () => {
     loading.value = true
 
     const params = {
-      warehouse: queryForm.value.warehouse,
-      floor: queryForm.value.floor,
-      direction: queryForm.value.direction,
-      location: queryForm.value.location,
+      warehouse: warehouseForm.value.warehouse,
+      floor: warehouseForm.value.floor,
+      direction: warehouseForm.value.direction,
+      location: warehouseForm.value.location,
       dateRange: dateRange.value,
       pageSize: pagination.pageSize,
       pageNum: pagination.currentPage,
@@ -179,19 +171,19 @@ const validateForm = (): boolean => {
     ElMessage.warning('请选择结束日期')
     return false
   }
-  if (!queryForm.value.warehouse) {
+  if (!warehouseForm.value.warehouse) {
     ElMessage.warning('请选择仓库')
     return false
   }
-  if (!queryForm.value.floor) {
+  if (!warehouseForm.value.floor) {
     ElMessage.warning('请选择楼层')
     return false
   }
-  if (!queryForm.value.direction) {
+  if (!warehouseForm.value.direction) {
     ElMessage.warning('请选择库位')
     return false
   }
-  if (!queryForm.value.location) {
+  if (!warehouseForm.value.location) {
     ElMessage.warning('请选择货位')
     return false
   }

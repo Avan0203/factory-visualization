@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:57:11
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-17 16:09:37
+ * @LastEditTime: 2025-12-24 16:48:57
  * @FilePath: /factory-visualization/src/layout/monitor/buildingContext.ts
  * @Description: BuildingContext - 建筑场景上下文
  */
@@ -249,11 +249,11 @@ class BuildingContext extends Context {
             );
         });
 
-        const redTexture = await new Promise<Texture>((resolve, reject) => {
+        const yellowTexture = await new Promise<Texture>((resolve, reject) => {
             textureLoader.load(
-                `${publicPath}red.png`,
+                `${publicPath}yellow.png`,
                 (texture) => {
-                    console.log('红色纹理加载完成');
+                    console.log('黄色纹理加载完成');
                     texture.generateMipmaps = false;
                     texture.minFilter = LinearFilter; // 或 NearestFilter
                     texture.wrapS = ClampToEdgeWrapping;
@@ -262,7 +262,7 @@ class BuildingContext extends Context {
                 },
                 undefined,
                 (error) => {
-                    console.error('红色纹理加载失败:', error);
+                    console.error('黄色纹理加载失败:', error);
                     reject(error);
                 }
             );
@@ -312,7 +312,7 @@ class BuildingContext extends Context {
 
             // 2. 创建文字标签精灵
             const blueTextTexture = this.createTextTexture(building.userData.name, '#0088ff');
-            const redTextTexture = this.createTextTexture(building.userData.name, '#ff0000');
+            const yellowTextTexture = this.createTextTexture(building.userData.name, '#f7d303');
             const textSpriteMaterial = new SpriteMaterial({
                 map: blueTextTexture,
                 transparent: true,
@@ -342,11 +342,12 @@ class BuildingContext extends Context {
                     spriteMaterial.map = blueTexture;
                     textSpriteMaterial.map = blueTextTexture;
                 } else {
-                    spriteMaterial.map = redTexture;
-                    textSpriteMaterial.map = redTextTexture;
+                    spriteMaterial.map = yellowTexture;
+                    textSpriteMaterial.map = yellowTextTexture;
                 };
                 sprite.material.map.needsUpdate = true;
                 textSprite.material.map.needsUpdate = true;
+                building.userData.state = state;
             }
 
             building.userData.changeState = changeState;

@@ -42,16 +42,10 @@ export const querySensorData = async (params: any): Promise<QuerySensorResult[][
   const startDate = formatDate(dataRange[0]);
   const endDate = formatDate(dataRange[1]);
 
-  const sensorItems = items.map(({ warehouse, floor, direction, location, queryType, sensorType }) => ({
-    code: `${warehouse}-${floor}-${direction}-${location}`,
-    query: queryType,
-    sensor: sensorType,
-  }));
-
   const queryParams: QuerySensorParams = {
     startDate,
     endDate,
-    items: sensorItems,
+    items,
   }
 
   const result = await request.post<QuerySensorResult[][]>('/api/sensors/query', queryParams);

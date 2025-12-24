@@ -1,8 +1,8 @@
 <!--
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-11-17 01:01:46
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-22 00:52:53
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2025-12-24 16:58:50
  * @FilePath: /factory-visualization/src/layout/monitor/monitor.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -121,6 +121,10 @@ onMounted(() => {
                 showBuildingInfo.value = true;
                 currentBuilding = buildingNameConfig[object.name].code;
                 console.log('currentBuilding: ', currentBuilding);
+                if (object.userData.state !== undefined && object.userData.state === false) {
+                    // 展示dialog
+
+                }
             }
         });
         render.on('unselect', () => {

@@ -2,7 +2,7 @@
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-06-05 15:51:09
  * @LastEditors: wuyifan wuyifan@udschina.com
- * @LastEditTime: 2025-12-23 11:33:33
+ * @LastEditTime: 2025-12-24 16:31:29
  * @FilePath: /factory-visualization/src/layout/chart/chart.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -11,8 +11,11 @@
         <el-form :model="queryForm" inline
             style="padding: 12px 12px 0 12px; background: #f5f5f5; flex-shrink: 0; white-space: nowrap; overflow-x: auto;">
             <el-form-item label="">
-                <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
-                    end-placeholder="结束日期" style="width: 220px;" @visible-change="handleDatePickerVisibleChange" />
+                <el-date-picker v-model="dateRange[0]" type="date" placeholder="开始日期" style="width: 140px;"
+                    @change="handleDateChange" />
+                <span style="margin: 0 10px;">至</span>
+                <el-date-picker v-model="dateRange[1]" type="date" placeholder="结束日期" style="width: 140px;"
+                    @change="handleDateChange" />
             </el-form-item>
             <el-form-item label="" style="margin-right: 10px;">
                 <el-select v-model="warehouseForm.warehouse" placeholder="仓库" style="width: 170px;"
@@ -64,7 +67,7 @@
             style="padding: 8px; background: #f9f9f9; border-radius: 4px; flex-shrink: 0; min-height: 30px; display: flex; flex-wrap: wrap; align-items: flex-start;">
             <el-tag v-for="tag in tags" :key="tag.id" closable :type="tag.type" @close="handleTagClose(tag)"
                 style="margin-right: 8px; margin-bottom: 5px;">
-                {{ tag.name }}
+                {{ tag.label }}
             </el-tag>
         </div>
 
@@ -80,44 +83,28 @@ import { ElMessage } from 'element-plus';
 import { querySensorData } from '@/api';
 import { warehouseOptions, floorOptions, buildingNameConfig } from '@/config';
 import { getDateRange } from '@/shard';
-import { useDateRange, useWareHouse } from '@/composables';
+import { useDateRange, useTag, useWareHouse } from '@/composables';
 const chartRef = ref(null);
 let myChart = null;
 
-const { dateRange, resetDateRange } = useDateRange();
-// 记录上一次的日期范围，用于判断是否真的变化了
-const lastDataRange = ref<[string, string]>([dateRange.value[0], dateRange.value[1]]);
+const { dateRange, resetDateRange, validateDateRange } = useDateRange();
 
 const { warehouseForm, directionOptions, locationOptions, resetWarehouseForm } = useWareHouse(true);
 
-// 日期选择器显示/隐藏变化处理
-const handleDatePickerVisibleChange = (visible: boolean) => {
-    // 只在日期选择器关闭时（visible 为 false）且值确实变化时才更新
-    if (!visible && dateRange.value[0] && dateRange.value[1]) {
-        const currentRange: [string, string] = [
-            formatDate(dateRange.value[0]),
-            formatDate(dateRange.value[1])
-        ];
 
-        // 检查日期范围是否真的变化了
-        if (!lastDataRange.value ||
-            lastDataRange.value[0] !== currentRange[0] ||
-            lastDataRange.value[1] !== currentRange[1]) {
-            lastDataRange.value = currentRange;
-            dataChange();
-        }
-    }
-}
+const backupDateRange = ref<[string, string]>([dateRange.value[0], dateRange.value[1]]);
 
 // 更新日期标签和图表
-const dataChange = () => {
-    if (dateRange.value[0] && dateRange.value[1]) {
+const handleDateChange = async () => {
+    if (backupDateRange.value[0] === dateRange.value[0] && backupDateRange.value[1] === dateRange.value[1]) return;
+    if (validateDateRange()) {
+        backupDateRange.value = [dateRange.value[0], dateRange.value[1]];
         const startDate = formatDate(dateRange.value[0]);
         const endDate = formatDate(dateRange.value[1]);
         dateLabels.value = generateDateLabels(startDate, endDate);
         // 更新图表x轴
         if (myChart) {
-            updateChartData();
+            await getTagData();
         }
     }
 }
@@ -145,19 +132,6 @@ const queryForm = ref({
     sensorType: '1'
 });
 
-// 方向编码转换为可读名称
-const getDirectionName = (directionCode: string, buildingCode: string) => {
-    if (Number(buildingCode) < 46) {
-        if (buildingCode === '08') {
-            return '全部';
-        } else {
-            return directionCode === '01' ? '东库' : '西库';
-        }
-    } else {
-        return directionCode === '01' ? '南库' : '北库';
-    }
-};
-
 // 仓库变化时，清空楼层、方向、货位
 const handleWarehouseChange = () => {
     warehouseForm.value.floor = '';
@@ -175,8 +149,7 @@ const handleDirectionChange = () => {
     warehouseForm.value.location = '';
 };
 
-// 标签数据
-const tags = ref([]);
+
 
 // 图表数据
 const chartData = ref({
@@ -345,107 +318,80 @@ const mapDataToDateLabels = (data: any[], queryType: string, startDate: string, 
     return mappedData;
 };
 
-// 添加方法
-const handleAdd = async () => {
-    // 验证必选字段
-    if (!warehouseForm.value.warehouse || !warehouseForm.value.floor || !warehouseForm.value.direction || !warehouseForm.value.location || !queryForm.value.queryType) {
-        ElMessage.warning('请选择必要选项：仓库、楼层、库位、货位、查询项');
-        return;
-    }
+const {
+    tags,
+    handleTag,
+    addTag,
+    removeTag,
+    isTagExists,
+    clearTags,
+    MAX_TAGS
+} = useTag();
 
-    const buildingData = warehouseForm.value.warehouse;
-
-    const buildingName = Object.values(buildingNameConfig).find(item => item.code === buildingData)?.name || '';
-
-    const floorIndex = parseInt(warehouseForm.value.floor);
-    const floorName = `第${floorIndex + 1}层`;
-
-    const directionName = getDirectionName(warehouseForm.value.direction, buildingData);
-
-    // 生成标签名称，包含查询类型
-    const queryTypeName = queryForm.value.queryType === 'temperature' ? '温度' : '湿度';
-    const tagName = `${buildingName}${floorName}${directionName}${+warehouseForm.value.location}号位-${queryTypeName}`;
-
-    // 检查是否已存在相同的标签
-    const existingTag = tags.value.find(tag => tag.name === tagName);
-    if (existingTag) {
-        ElMessage.warning('该位置已存在，请勿重复添加');
-        return;
-    }
-
+const getTagData = async () => {
     try {
         // 调用接口查询数据
         const queryParams = {
-            warehouse: warehouseForm.value.warehouse,
-            floor: floorIndex,
-            direction: warehouseForm.value.direction,
-            location: warehouseForm.value.location,
             dataRange: dateRange.value,
-            queryType: queryForm.value.queryType as 'temperature' | 'humidity',
-            sensorType: queryForm.value.sensorType
+            items: tags.value.map(tag => ({
+                code: tag.code,
+                query: queryForm.value.queryType,
+                sensor: queryForm.value.sensorType
+            }))
         };
 
         const sensorDataArray = await querySensorData(queryParams);
-        console.log('sensorDataArray: ', sensorDataArray);
 
-        // 从返回的数组的数组中取第一个元素（因为当前只查询一个item）
-        const sensorData = sensorDataArray && sensorDataArray.length > 0 ? sensorDataArray[0] : [];
-
-        // 获取日期范围
+        // 获取日期范围用于数据映射
         const startDate = formatDate(dateRange.value[0]);
         const endDate = formatDate(dateRange.value[1]);
 
-        // 更新日期标签（如果日期范围变化了）
-        const newDateLabels = generateDateLabels(startDate, endDate);
-        if (JSON.stringify(dateLabels.value) !== JSON.stringify(newDateLabels)) {
-            dateLabels.value = newDateLabels;
-        }
-
-        // 将数据映射到日期标签数组
-        const chartDataArray = mapDataToDateLabels(sensorData as any[], queryForm.value.queryType, startDate, endDate);
-
-        // 检查是否有数据
-        const hasData = chartDataArray.some(val => val !== null && val !== undefined);
-        if (!hasData) {
-            ElMessage.warning('查询时间段内无数据');
-            return;
-        }
-
-        // 创建新的标签
-        const newTag = {
-            id: Date.now(),
-            name: tagName,
-            type: 'primary',
-            data: chartDataArray,
-            queryType: queryForm.value.queryType
-        };
-
-        // 添加到标签列表
-        tags.value.push(newTag);
-
         // 创建图表系列数据
         const symbolTypes = ['circle', 'rect', 'diamond', 'triangle', 'pin', 'arrow', 'roundRect', 'star'];
-        const symbolType = symbolTypes[chartData.value.series.length % symbolTypes.length];
 
         // 根据查询类型确定使用哪个Y轴：温度用左轴(0)，湿度用右轴(1)
         const yAxisIndex = queryForm.value.queryType === 'temperature' ? 0 : 1;
 
-        const newSeries = {
-            name: tagName,
-            type: 'line',
-            symbol: symbolType,
-            symbolSize: 6,
-            smooth: true,
-            yAxisIndex: yAxisIndex,
-            data: chartDataArray
-        };
+        // 遍历接口返回的数据，为每个tag创建或更新series
+        // sensorDataArray的顺序与tags.value的顺序一致
+        sensorDataArray.forEach((dataArray, index) => {
+            const tag = tags.value[index];
+            if (!tag) return;
 
-        // 添加到图表数据
-        chartData.value.series.push(newSeries);
+            // 将数据映射到日期标签
+            const mappedData = mapDataToDateLabels(dataArray, queryForm.value.queryType, startDate, endDate);
+
+            // 检查series是否已存在
+            const existingSeriesIndex = chartData.value.series.findIndex(s => s.name === tag.label);
+
+            if (existingSeriesIndex > -1) {
+                // 如果已存在，更新数据
+                chartData.value.series[existingSeriesIndex].data = mappedData;
+                chartData.value.series[existingSeriesIndex].yAxisIndex = yAxisIndex;
+            } else {
+                // 如果不存在，创建新的series
+                const symbolType = symbolTypes[chartData.value.series.length % symbolTypes.length];
+
+                const seriesItem = {
+                    name: tag.label,
+                    type: 'line',
+                    data: mappedData,
+                    yAxisIndex: yAxisIndex,
+                    symbol: symbolType,
+                    symbolSize: 6,
+                    smooth: true,
+                    lineStyle: {
+                        width: 2
+                    }
+                };
+
+                // 添加到图表数据中
+                chartData.value.series.push(seriesItem);
+            }
+        });
 
         // 更新图表
         updateChartData();
-
 
         ElMessage.success('添加成功');
     } catch (error) {
@@ -456,16 +402,48 @@ const handleAdd = async () => {
 };
 
 
+// 添加方法
+const handleAdd = async () => {
+    // 验证必选字段
+    if (!warehouseForm.value.warehouse || !warehouseForm.value.floor || !warehouseForm.value.direction || !warehouseForm.value.location || !queryForm.value.queryType) {
+        ElMessage.warning('请选择必要选项：仓库、楼层、库位、货位、查询项');
+        return;
+    }
+
+    const prevTags = handleTag(warehouseForm.value.warehouse, warehouseForm.value.floor, warehouseForm.value.direction, warehouseForm.value.location, queryForm.value.queryType);
+
+    // 检查添加后是否会超过限制
+    const newTagsCount = prevTags.filter(tag => !isTagExists(tag)).length;
+    if (tags.value.length + newTagsCount > MAX_TAGS) {
+        ElMessage.warning(`最多只能查看${MAX_TAGS}条数据，当前已有${tags.value.length}条，无法继续添加`);
+        return;
+    }
+
+    for (const prevTag of prevTags) {
+        if (isTagExists(prevTag)) {
+            ElMessage.warning(`code:${prevTag.code}已存在，请勿重复添加`);
+            continue;
+        }
+        addTag(prevTag);
+    }
+
+    // 接口调用前再次检查（双重保险）
+    if (tags.value.length > MAX_TAGS) {
+        ElMessage.warning(`最多只能查看${MAX_TAGS}条数据`);
+        return;
+    }
+
+    await getTagData();
+};
+
+
 // 标签删除方法
 const handleTagClose = (tag) => {
     // 从标签列表中移除
-    const tagIndex = tags.value.findIndex(t => t.id === tag.id);
-    if (tagIndex > -1) {
-        tags.value.splice(tagIndex, 1);
-    }
+    removeTag(tag.code);
 
     // 从图表数据中移除对应的系列
-    const seriesIndex = chartData.value.series.findIndex(s => s.name === tag.name);
+    const seriesIndex = chartData.value.series.findIndex(s => s.name === tag.label);
     if (seriesIndex > -1) {
         chartData.value.series.splice(seriesIndex, 1);
     }
@@ -487,7 +465,7 @@ const handleReset = () => {
     };
 
     // 清空标签
-    tags.value = [];
+    clearTags();
 
     // 清空图表数据
     chartData.value.series = [];

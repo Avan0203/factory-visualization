@@ -1,8 +1,8 @@
 /*
  * @Author: wuyifan 1208097313@qq.com
  * @Date: 2025-04-17 00:59:57
- * @LastEditors: wuyifan 1208097313@qq.com
- * @LastEditTime: 2025-12-22 01:17:49
+ * @LastEditors: wuyifan wuyifan@udschina.com
+ * @LastEditTime: 2026-05-09 11:32:30
  * @FilePath: /factory-visualization/vite.config.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -41,9 +41,16 @@ function excludeBlendFiles(): Plugin {
   }
 }
 
-export default defineConfig({
-  // 根据部署环境设置base路径
-  base: process.env.NODE_ENV === 'production' ? '/factory-visualization/' : './',
+/** `pnpm run build:serve`（vite build --mode serve）用相对 base，便于本地托管 dist */
+function resolveBase(mode: string): string {
+  console.log('current mode:', mode);
+  if (mode === 'serve') return './'
+  if (mode === 'production') return '/factory-visualization/'
+  return './'
+}
+
+export default defineConfig(({ mode }) => ({
+  base: resolveBase(mode),
   plugins: [vue(), excludeBlendFiles()],
   // 路径别名配置
   resolve: {
@@ -91,4 +98,4 @@ export default defineConfig({
     open: true,
     host: true
   }
-})
+}))

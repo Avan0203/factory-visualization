@@ -96,6 +96,7 @@ const backToBuilding = () => {
     isBuildingContext.value = true;
     currentBuilding = '-1';
     currentFloor = '-1';
+    selectedFloor.value = null;
     // 断开SSE连接
     disconnect();
 }

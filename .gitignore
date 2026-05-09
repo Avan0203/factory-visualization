@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# 本地 Docker / Compose 环境（从 docker.env.example 复制）
+docker.env
+factory-stack.tar
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

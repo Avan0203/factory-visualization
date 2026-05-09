@@ -120,7 +120,9 @@ export const subscribeSensorData = async (params: SubscribeParams): Promise<Subs
  * 获取SSE流URL
  */
 export const getSSEStreamUrl = (clientId: string): string => {
-  // 使用与request相同的逻辑获取API基础URL
+  if (import.meta.env.VITE_USE_SAME_ORIGIN === 'true') {
+    return `/api/sensors/stream?clientId=${encodeURIComponent(clientId)}`;
+  }
   let baseURL: string;
   if (import.meta.env.VITE_API_BASE_URL) {
     baseURL = import.meta.env.VITE_API_BASE_URL;

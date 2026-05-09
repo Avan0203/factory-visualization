@@ -45,6 +45,8 @@ function excludeBlendFiles(): Plugin {
 function resolveBase(mode: string): string {
   console.log('current mode:', mode);
   if (mode === 'serve') return './'
+  /** Docker：nginx 根路径托管，与 /api 反代同源 */
+  if (mode === 'docker') return '/'
   if (mode === 'production') return '/factory-visualization/'
   return './'
 }

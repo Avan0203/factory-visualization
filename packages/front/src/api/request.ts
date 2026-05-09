@@ -10,6 +10,10 @@ import { ElMessage } from 'element-plus';
 // 如果设置了环境变量VITE_API_BASE_URL，优先使用
 // 否则根据当前页面的hostname动态构建（支持局域网访问）
 const getApiBaseURL = (): string => {
+  // Docker / nginx 同源反代：请求当前站点下的 /api
+  if (import.meta.env.VITE_USE_SAME_ORIGIN === 'true') {
+    return '';
+  }
   // 优先使用环境变量配置
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;

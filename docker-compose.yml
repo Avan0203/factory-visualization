@@ -1,0 +1,32 @@
+# 用法:
+#   复制 docker.env.example 为 docker.env；本机 MySQL 默认 DB_HOST=host.docker.internal
+#   docker compose up -d --build
+# 浏览器访问 http://<主机>:8080/（若端口冲突可在启动前设置 FRONT_PUBLISH_PORT，如 18080）
+# API 走同源 /api → nginx → backend
+# 若需直连后端调试，可取消 backend 下 ports 的注释
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-runner
+    env_file:
+      - docker.env
+    # 让容器内 host.docker.internal 指向宿主机（Docker Desktop 自带；Linux 需此配置）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "3500"
+    # ports:
+    #   - "3500:3500"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-runner
+    ports:
+      - "${FRONT_PUBLISH_PORT:-8080}:80"
+    depends_on:
+      - backend
